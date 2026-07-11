@@ -1,0 +1,17 @@
+{
+  "name": "@altair666/inventory_book",
+  "description": "Инвентарная книга учёта документов",
+  "homePage": "https://github.com/Altair666/inventory_book",
+  "version": "0.1.0",
+  "grist": {
+    "name": "Inventory book",
+    "url": "https://altair666.github.io/inventory_book/index.html",
+    "widgetId": "@altair666/inventory_book",
+    "published": true,
+    "accessLevel": "full",
+    "renderAfterReady": true,
+    "description": "Регистрация изменений документов с присвоением инвентарных номеров",
+    "authors": [{"name": "Altair666", "url": "https://github.com/Altair666"}],
+    "isGristLabsMaintained": false
+  }
+}

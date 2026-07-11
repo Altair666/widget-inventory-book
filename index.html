@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Инвентарная книга</title>
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f7f7f7;--surf:#FFF;--surf2:#f7f7f7;--surf3:#e5e5e5;
+  --brd:#DEDAD2;--brd2:#C4C0B6;
+  --tx:#18170F;--tx2:#6A6860;--tx3:#9E9C94;
+  --acc:#1E4ED8;--acc-bg:#EEF2FF;--acc-brd:#C7D2FE;
+  --grn:#0D6E4E;--grn-bg:#ECFDF5;--grn-brd:#A7F3D0;
+  --warn:#92400E;--warn-bg:#FFFBEB;--warn-brd:#FCD34D;
+  --red:#991B1B;--red-bg:#FEF2F2;--red-brd:#FECACA;
+  --mono:'IBM Plex Mono',monospace;
+  --sans:'IBM Plex Sans',sans-serif;
+  --r:4pt;--r2:4pt;
+}
+html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;color:var(--tx);background:var(--bg)}
+.app{height:100%;overflow:hidden;display:flex;flex-direction:column}
+.conn-dot{width:6px;height:6px;border-radius:50%;background:var(--red);flex-shrink:0}
+.conn-dot.ok{background:var(--grn)}
+.conn-lbl{font-size:11px;color:var(--tx3)}
+.conn-status{position:fixed;left:10px;bottom:6px;display:flex;align-items:center;gap:6px;font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4pt;padding:1px 7px;z-index:10}
+.ver-footer{position:fixed;right:10px;bottom:6px;font-family:var(--mono);font-size:10px;color:var(--tx3);background:var(--surf2);border:1px solid var(--brd);border-radius:4pt;padding:1px 7px;z-index:10}
+
+.main{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:0;padding-bottom:26px}
+
+.panel{background:var(--surf);border:1px solid var(--brd);border-radius:0;flex-shrink:0}
+.panel+.panel{border-top:none}
+.ph{display:flex;align-items:center;justify-content:space-between;height:32px;padding:0 12px;border-bottom:1px solid var(--brd);background:var(--surf2)}
+.ph-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--tx2)}
+.pb{padding:10px 12px}
+
+.icon-btn{display:flex;align-items:center;justify-content:center;width:22px;height:22px;border:1px solid transparent;border-radius:4pt;background:transparent;color:var(--tx3);cursor:pointer;padding:0;transition:all .12s}
+.icon-btn:hover{background:var(--surf3);color:var(--tx)}
+
+.form-row{display:grid;gap:10px;margin-bottom:10px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tx2)}
+.form-hint{font-size:10px;color:var(--tx3);min-height:14px}
+.form-input{height:32px;border:1px solid var(--brd);border-radius:var(--r);background:#f7f7f7;padding:0 9px;font-family:inherit;font-size:12px;color:var(--tx);outline:none;transition:border-color .15s,background .15s;width:100%}
+.form-input:focus{border-color:var(--acc);background:var(--surf)}
+.form-input[readonly]{background:var(--surf3);color:var(--tx2);cursor:default}
+.form-input[readonly]:focus{border-color:var(--brd)}
+.form-input::placeholder{color:var(--tx3)}
+.form-input.mono{font-family:var(--mono)}
+.form-input.formed-num{font-family:var(--mono);background:var(--grn-bg);border-color:var(--grn-brd);color:var(--grn);font-weight:500;cursor:default}
+.form-input.formed-num:focus{background:var(--grn-bg);border-color:var(--grn-brd)}
+.form-select{height:32px;border:1px solid var(--brd);border-radius:var(--r);background:#f7f7f7;padding:0 9px;font-family:inherit;font-size:12px;color:var(--tx);outline:none;width:100%;cursor:pointer;transition:border-color .15s}
+.form-select:focus{border-color:var(--acc)}
+.form-textarea{border:1px solid var(--brd);border-radius:var(--r);background:#f7f7f7;padding:8px 9px;font-family:inherit;font-size:12px;color:var(--tx);outline:none;width:100%;min-height:56px;resize:vertical;transition:border-color .15s,background .15s}
+.form-textarea:focus{border-color:var(--acc);background:var(--surf)}
+
+.ac-wrap{position:relative}
+.ac-drop{position:absolute;top:34px;left:0;right:0;background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);z-index:100;max-height:220px;overflow-y:auto;display:none;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.ac-drop.on{display:block}
+.ac-item{padding:6px 9px;cursor:pointer;transition:background .1s;display:flex;align-items:center;gap:7px}
+.ac-item:hover,.ac-item.hov{background:var(--acc-bg)}
+.ac-code{font-family:var(--mono);font-size:10px;color:var(--acc);flex-shrink:0;white-space:nowrap}
+.ac-name{font-size:12px;color:var(--tx);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.btn-add{display:flex;align-items:center;justify-content:center;gap:6px;background:#16b378;color:#fff;border:none;border-radius:var(--r);padding:9px 16px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;transition:opacity .15s,transform .1s;width:100%}
+.btn-add:hover{opacity:.88}
+.btn-add:active{transform:scale(.98)}
+.btn-add:disabled{opacity:.35;cursor:not-allowed}
+.btn-secondary{background:var(--surf3);color:var(--tx);border:1px solid var(--brd);border-radius:var(--r);padding:7px 14px;font-family:inherit;font-size:12px;cursor:pointer}
+.btn-secondary:hover{background:var(--brd)}
+.btn-primary{background:var(--acc);color:#fff;border:none;border-radius:var(--r);padding:7px 14px;font-family:inherit;font-size:12px;cursor:pointer}
+.btn-primary:hover{opacity:.9}
+.btn-primary:disabled{opacity:.35;cursor:not-allowed}
+
+#regBody{overflow-x:auto}
+.reg-table{width:100%;border-collapse:collapse;font-size:12px}
+.reg-table th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);padding:5px 8px;border-bottom:2px solid var(--brd);text-align:center;background:var(--surf2);white-space:nowrap}
+.reg-table td{padding:6px 8px;border-bottom:1px solid var(--brd);vertical-align:top;text-align:center}
+.reg-table tr:last-child td{border-bottom:none}
+.reg-table tr:hover td{background:var(--surf2)}
+.reg-dn{font-family:var(--mono);font-size:11px;color:var(--acc);white-space:nowrap}
+.reg-mono{font-family:var(--mono);font-size:11px;white-space:nowrap}
+.reg-name{text-align:left;white-space:normal;max-width:200px;word-break:break-word;overflow-wrap:anywhere}
+.reg-reason{text-align:left;white-space:pre-wrap;max-width:220px;word-break:break-word;overflow-wrap:anywhere}
+.reg-empty{padding:16px;text-align:center;color:var(--tx3);font-size:12px}
+.reg-filter-bar{padding:8px 12px;background:var(--surf2);border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:8px}
+.reg-filter-wrap{position:relative;flex:1}
+.reg-filter-input{width:100%;height:28px;border:1px solid var(--brd);border-radius:var(--r);padding:0 9px 0 28px;font-family:inherit;font-size:12px;background:#fff;outline:none;color:var(--tx)}
+.reg-filter-input:focus{border-color:var(--acc)}
+.reg-filter-icon{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--tx3);pointer-events:none}
+
+.reg-actions{white-space:nowrap;width:56px}
+.cell-edit-btn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border:1px solid transparent;border-radius:4pt;background:transparent;color:#E07B1F;cursor:pointer;flex-shrink:0;transition:all .1s;padding:0}
+.cell-edit-btn:hover{background:#FFF4E6;color:#C5651A;border-color:#F5D4A0}
+.cell-edit-btn.save{color:var(--grn)}
+.cell-edit-btn.save:hover{background:var(--grn-bg);color:var(--grn);border-color:var(--grn-brd)}
+.cell-edit-btn.cancel{color:var(--red)}
+.cell-edit-btn.cancel:hover{background:var(--red-bg);color:var(--red);border-color:var(--red-brd)}
+.cell-edit-btn.del{color:var(--red)}
+.cell-edit-btn.del:hover{background:var(--red-bg);color:var(--red);border-color:var(--red-brd)}
+.reg-table textarea.form-textarea{min-height:50px;text-align:left;font-size:11px}
+.reg-table input.form-input,.reg-table select.form-select{height:26px;font-size:11px}
+.tag{display:inline-flex;align-items:center;font-family:var(--mono);font-size:10px;padding:1px 5px;border-radius:4pt}
+.tag-blue{background:var(--acc-bg);color:var(--acc)}
+
+/* Settings slide-over */
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,.15);display:none;z-index:190}
+#overlay.on{display:block}
+#settingsPanel{position:fixed;top:0;right:0;bottom:0;width:min(380px,100%);background:var(--surf);border-left:1px solid var(--brd);box-shadow:-4px 0 12px rgba(0,0,0,.1);display:none;flex-direction:column;z-index:200}
+#settingsPanel.on{display:flex}
+#settingsPanel .ph{flex-shrink:0}
+#settingsPanel .pb{flex:1;overflow-y:auto}
+#settingsPanel .panel-footer{padding:10px 12px;border-top:1px solid var(--brd);display:flex;justify-content:flex-end;gap:8px;flex-shrink:0}
+#sDocTypeNames{min-height:220px;font-family:var(--mono)}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:4pt}
+</style>
+</head>
+<body>
+<div class="app">
+<main class="main" id="main">
+
+  <!-- REGISTRATION FORM -->
+  <div class="panel">
+    <div class="ph">
+      <span class="ph-title">Регистрация документа</span>
+      <button class="icon-btn" id="btnSettings" title="Настройки виджета">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+    <div class="pb">
+
+      <div class="form-row" style="grid-template-columns:130px 120px 1fr 1fr">
+        <div class="form-group">
+          <label class="form-label">Инв. номер</label>
+          <input class="form-input formed-num" id="fInvNumber" readonly value="—">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Дата</label>
+          <input class="form-input mono" type="date" id="fDate" onchange="onFormChange()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Изделие</label>
+          <div class="ac-wrap">
+            <input class="form-input" id="fProductInput" placeholder="Поиск по обозначению или наименованию…" autocomplete="off" oninput="onProductInput()" onfocus="onProductInput()" onblur="onProductBlur()">
+            <div class="ac-drop" id="fProductDrop"></div>
+          </div>
+        </div>
+        <div class="form-group" id="fProductNameGroup">
+          <label class="form-label">Наименование изделия</label>
+          <input class="form-input" id="fProductName" readonly value="—">
+        </div>
+      </div>
+
+      <div id="docFieldsWrap">
+        <div class="form-row" style="grid-template-columns:110px 1.6fr 70px 120px 110px">
+          <div class="form-group">
+            <label class="form-label">Тип документа</label>
+            <select class="form-select" id="fDocType" onchange="onDocTypeChange()"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Обозначение документа</label>
+            <input class="form-input mono" id="fDesignation" oninput="onDesignationEdited()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Листов</label>
+            <input class="form-input mono" type="number" min="1" step="1" id="fSheets" value="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Формат</label>
+            <select class="form-select" id="fFormat" onchange="onFormatChange()"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">№ изменения</label>
+            <input class="form-input formed-num" id="fChangeNumber" readonly value="—">
+          </div>
+        </div>
+
+        <div class="form-row" style="grid-template-columns:1fr 1fr" id="fFormatOtherRow">
+          <div class="form-group">
+            <label class="form-label">Формат (свой вариант)</label>
+            <input class="form-input" id="fFormatOther" placeholder="напр. 3хА2">
+          </div>
+        </div>
+
+        <div class="form-row" style="grid-template-columns:1fr 1fr">
+          <div class="form-group">
+            <label class="form-label">Наименование</label>
+            <input class="form-input" id="fName" readonly value="—">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Имя файла</label>
+            <input class="form-input mono" id="fFileName" readonly value="—">
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:12px">
+          <label class="form-label">Примечание</label>
+          <textarea class="form-textarea" id="fNote" placeholder="Причина изменений"></textarea>
+        </div>
+
+        <button class="btn-add" id="btnRegister" onclick="registerDocument()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          Зарегистрировать документ
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- REGISTRY -->
+  <div class="panel">
+    <div class="ph">
+      <span class="ph-title">Реестр документов</span>
+      <span class="tag tag-blue" id="regCount"></span>
+    </div>
+    <div class="reg-filter-bar">
+      <div class="reg-filter-wrap">
+        <svg class="reg-filter-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="reg-filter-input" id="regFilterInput" placeholder="Фильтр по инв. номеру, изделию, обозначению…" oninput="renderRegistry()">
+      </div>
+    </div>
+    <div id="regBody"></div>
+  </div>
+
+</main>
+</div>
+
+<div class="conn-status">
+  <div class="conn-dot" id="connDot"></div>
+  <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
+</div>
+<footer class="ver-footer">v0.1.0</footer>
+
+<div id="overlay"></div>
+<div id="settingsPanel">
+  <div class="ph">
+    <span class="ph-title">Настройки виджета</span>
+    <button class="icon-btn" id="settingsClose">&times;</button>
+  </div>
+  <div class="pb">
+    <div class="form-group" style="margin-bottom:12px">
+      <label class="form-label">ID таблицы номенклатуры</label>
+      <input class="form-input mono" id="sComponentsTable" placeholder="Components">
+      <span class="form-hint">Таблица компонентов/изделий с колонками name, primary_use, decimal_number, org_prefix.</span>
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label class="form-label">Названия типов документов</label>
+      <textarea class="form-textarea" id="sDocTypeNames"></textarea>
+      <span class="form-hint">По строке на тип: код=полное название. Используется для поля «Наименование». Проверьте и поправьте — часть названий проставлена по умолчанию и может не совпадать с принятой у вас номенклатурой.</span>
+    </div>
+  </div>
+  <div class="panel-footer">
+    <button class="btn-secondary" id="settingsCancel">Отмена</button>
+    <button class="btn-primary" id="settingsSave">Сохранить</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// code '' = "Д" — bare part designation with no suffix letters (base drawing of a part)
+// fullName defaults are best-effort ЕСКД (ГОСТ 2.102) expansions — verify and correct
+// via Настройки → «Названия типов документов», the widget only reads them from there.
+var DOC_TYPES = [
+  { code: '', label: 'Д', fullName: 'Чертёж детали' },
+  { code: 'СП', label: 'СП', fullName: 'Спецификация' },
+  { code: 'СБ', label: 'СБ', fullName: 'Сборочный чертёж' },
+  { code: 'ГЧ', label: 'ГЧ', fullName: 'Габаритный чертёж' },
+  { code: 'ТУ', label: 'ТУ', fullName: 'Технические условия' },
+  { code: 'РЭ', label: 'РЭ', fullName: 'Руководство по эксплуатации' },
+  { code: 'Д1', label: 'Д1', fullName: 'Ведомость документов' },
+  { code: 'ПС', label: 'ПС', fullName: 'Паспорт' },
+  { code: 'ВЭ', label: 'ВЭ', fullName: 'Ведомость эксплуатационных документов' },
+  { code: 'ЭТ', label: 'ЭТ', fullName: 'Этикетка' },
+  { code: 'ВП', label: 'ВП', fullName: 'Ведомость покупных изделий' },
+  { code: 'Э5', label: 'Э5', fullName: 'Схема подключения' },
+  { code: 'Э3', label: 'Э3', fullName: 'Схема электрическая принципиальная' },
+  { code: 'ПЭ3', label: 'ПЭ3', fullName: 'Перечень элементов' },
+  { code: 'Э4', label: 'Э4', fullName: 'Схема соединений' },
+  { code: 'Э2', label: 'Э2', fullName: 'Схема функциональная' },
+  { code: 'ИС', label: 'ИС', fullName: 'Инструкция по эксплуатации' }
+];
+
+var FORMATS = ['А4', 'А3', 'А2', 'А1', 'А0', '2хА4', '3хА4', '4хА4', '2хА3', '3хА3', '4хА3', '2хА2', '2хА1', '2хА0'];
+var FORMAT_OTHER = '__other__';
+
+var COMPONENTS_TABLE_CANDIDATES = ['Components', 'components'];
+
+var DEFAULT_OPTIONS = {
+  componentsTableId: '',
+  docTypeNames: '' // "код=название" per line, overrides DOC_TYPES fullName; '' = use built-in defaults
+};
+
+var state = {
+  records: [],          // registry records, raw Grist rows (real colIds)
+  recordsLoaded: false,
+  changeNumberFloor: {}, // String(designation) -> highest ChangeNumber known taken (monotonic, never regresses)
+  options: Object.assign({}, DEFAULT_OPTIONS),
+
+  componentsById: {},   // id -> {id, name, primary_use, decimal_number, org_prefix, serial}
+  componentsLoaded: false,
+
+  selectedProductId: null,
+  designationAuto: true // true while fDesignation still holds the auto-generated value (not hand-edited)
+};
+
+function setConn(ok, label) {
+  document.getElementById('connDot').className = 'conn-dot' + (ok ? ' ok' : '');
+  document.getElementById('connLbl').textContent = label;
+}
+
+function docTypeNameOverrides() {
+  var map = {};
+  String(state.options.docTypeNames || '').split('\n').forEach(function (line) {
+    var i = line.indexOf('=');
+    if (i === -1) return;
+    var code = line.slice(0, i).trim();
+    var name = line.slice(i + 1).trim();
+    if (name) map[code] = name;
+  });
+  return map;
+}
+
+function fullNameForDocType(code) {
+  var overrides = docTypeNameOverrides();
+  if (Object.prototype.hasOwnProperty.call(overrides, code)) return overrides[code];
+  var dt = DOC_TYPES.filter(function (d) { return d.code === code; })[0];
+  return dt ? dt.fullName : '';
+}
+
+function defaultDocTypeNamesText() {
+  return DOC_TYPES.map(function (dt) { return dt.code + '=' + dt.fullName; }).join('\n');
+}
+
+// changeNumberFloor is intentionally monotonic (only moves up): grist.onRecords
+// can fire with a snapshot that briefly lags behind our own just-completed write
+// (server round-trip), which would otherwise silently erase a freshly registered
+// ChangeNumber from view and cause the next registration to reuse it.
+function bumpChangeNumberFloor(designation, n) {
+  if (!designation || isNaN(n)) return;
+  var key = String(designation);
+  if (!state.changeNumberFloor[key] || n > state.changeNumberFloor[key]) {
+    state.changeNumberFloor[key] = n;
+  }
+}
+
+// Don't trust onRecords' row-oriented values for this — read the raw
+// column-oriented data instead, same reasoning as notification_numbers.
+function refreshChangeNumberFloorsFromServer() {
+  grist.docApi.fetchSelectedTable().then(function (table) {
+    var ids = table.id || [];
+    var designations = table.DocumentDesignation || [];
+    var changeNumbers = table.ChangeNumber || [];
+    ids.forEach(function (id, i) {
+      var n = parseInt(String(changeNumbers[i] || '0').replace(/[^0-9]/g, ''), 10);
+      bumpChangeNumberFloor(designations[i], n);
+    });
+    updateComputedFields();
+  }).catch(function (err) { console.error('Не удалось получить сырые данные для расчёта № изменения', err); });
+}
+
+// ---------- Grist wiring ----------
+
+grist.ready({ requiredAccess: 'full' });
+
+grist.onOptions(function (options) {
+  state.options = Object.assign({}, DEFAULT_OPTIONS, options || {});
+  populateSelects();
+  updateComputedFields();
+  loadComponents();
+});
+
+grist.onRecords(function (records) {
+  setConn(true, 'Подключено к Grist');
+  state.recordsLoaded = true;
+  state.records = records;
+  refreshChangeNumberFloorsFromServer();
+  updateComputedFields();
+  renderRegistry();
+});
+
+function showError(err) {
+  console.error(err);
+  window.alert('Ошибка: ' + (err && err.message ? err.message : err));
+}
+
+// ---------- Components (nomenclature) table ----------
+
+function componentsTableCandidates() {
+  if (state.options.componentsTableId) return [state.options.componentsTableId];
+  return COMPONENTS_TABLE_CANDIDATES;
+}
+
+function loadComponents() {
+  state.componentsLoaded = false;
+  var candidates = componentsTableCandidates();
+
+  function tryNext(i) {
+    if (i >= candidates.length) {
+      console.error('Не удалось найти таблицу номенклатуры среди: ' + candidates.join(', '));
+      return;
+    }
+    grist.docApi.fetchTable(candidates[i]).then(function (table) {
+      var ids = table.id || [];
+      var byId = {};
+      ids.forEach(function (id, i2) {
+        byId[id] = {
+          id: id,
+          name: table.name ? table.name[i2] : '',
+          primary_use: table.primary_use ? table.primary_use[i2] : 0,
+          decimal_number: table.decimal_number ? table.decimal_number[i2] : '',
+          org_prefix: table.org_prefix ? table.org_prefix[i2] : '',
+          serial: table.serial ? table.serial[i2] : ''
+        };
+      });
+      state.componentsById = byId;
+      state.componentsLoaded = true;
+      updateComputedFields();
+    }).catch(function () { tryNext(i + 1); });
+  }
+  tryNext(0);
+}
+
+function orgPrefixFor(comp) {
+  if (!comp) return '';
+  if (comp.org_prefix) return comp.org_prefix;
+  var parts = String(comp.decimal_number || '').split('.');
+  if (parts.length >= 3 && !/^\d+$/.test(parts[0])) return parts[0];
+  return '';
+}
+
+// ---------- Product autocomplete (registration form) ----------
+
+var fProductInput = document.getElementById('fProductInput');
+var fProductDrop = document.getElementById('fProductDrop');
+
+function searchComponents(q) {
+  var list = Object.keys(state.componentsById).map(function (id) { return state.componentsById[id]; });
+  if (q) {
+    list = list.filter(function (c) {
+      return (c.decimal_number || '').toLowerCase().indexOf(q) !== -1 ||
+             (c.name || '').toLowerCase().indexOf(q) !== -1;
+    });
+  }
+  return list.slice(0, 40);
+}
+
+function onProductInput() {
+  var q = fProductInput.value.trim().toLowerCase();
+  var matches = searchComponents(q);
+  fProductDrop.innerHTML = '';
+  if (!state.componentsLoaded) {
+    var loading = document.createElement('div');
+    loading.className = 'ac-item';
+    loading.textContent = 'Загрузка номенклатуры…';
+    fProductDrop.appendChild(loading);
+    fProductDrop.classList.add('on');
+    return;
+  }
+  if (!matches.length) { fProductDrop.classList.remove('on'); return; }
+  matches.forEach(function (c) {
+    var item = document.createElement('div');
+    item.className = 'ac-item';
+    var code = document.createElement('span');
+    code.className = 'ac-code'; code.textContent = c.decimal_number || '';
+    var name = document.createElement('span');
+    name.className = 'ac-name'; name.textContent = c.name || '';
+    item.appendChild(code); item.appendChild(name);
+    item.addEventListener('mousedown', function (e) {
+      e.preventDefault();
+      selectProduct(c.id);
+    });
+    fProductDrop.appendChild(item);
+  });
+  fProductDrop.classList.add('on');
+}
+function onProductBlur() {
+  setTimeout(function () { fProductDrop.classList.remove('on'); }, 120);
+}
+
+function selectProduct(id) {
+  state.selectedProductId = id;
+  var comp = state.componentsById[id];
+  fProductInput.value = comp ? (comp.decimal_number + ' — ' + comp.name) : ('#' + id);
+  fProductDrop.classList.remove('on');
+  state.designationAuto = true;
+  onFormChange();
+}
+
+// ---------- Document type / format / designation ----------
+
+var fDocType = document.getElementById('fDocType');
+var fDesignation = document.getElementById('fDesignation');
+var fFormat = document.getElementById('fFormat');
+var fFormatOther = document.getElementById('fFormatOther');
+var fFormatOtherRow = document.getElementById('fFormatOtherRow');
+
+function populateSelects() {
+  var keepDocType = fDocType.value;
+  fDocType.innerHTML = '';
+  DOC_TYPES.forEach(function (dt) {
+    var opt = document.createElement('option');
+    opt.value = dt.code;
+    opt.textContent = dt.label + ' — ' + fullNameForDocType(dt.code);
+    fDocType.appendChild(opt);
+  });
+  if (keepDocType) fDocType.value = keepDocType;
+
+  if (fFormat.options.length) return; // format list is static — only build it once
+  FORMATS.forEach(function (f) {
+    var opt = document.createElement('option');
+    opt.value = f; opt.textContent = f;
+    fFormat.appendChild(opt);
+  });
+  var otherOpt = document.createElement('option');
+  otherOpt.value = FORMAT_OTHER; otherOpt.textContent = 'Другое…';
+  fFormat.appendChild(otherOpt);
+}
+
+function autoDesignation() {
+  var comp = state.selectedProductId ? state.componentsById[state.selectedProductId] : null;
+  if (!comp) return '';
+  var code = fDocType.value;
+  return (comp.decimal_number || '') + (code ? ' ' + code : '');
+}
+
+function onDocTypeChange() {
+  if (state.designationAuto) fDesignation.value = autoDesignation();
+  onFormChange();
+}
+
+function onDesignationEdited() {
+  state.designationAuto = false;
+  onFormChange();
+}
+
+function onFormatChange() {
+  fFormatOtherRow.style.display = (fFormat.value === FORMAT_OTHER) ? '' : 'none';
+  onFormChange();
+}
+
+function currentFormat() {
+  return fFormat.value === FORMAT_OTHER ? fFormatOther.value.trim() : fFormat.value;
+}
+
+function onFormChange() { updateComputedFields(); }
+
+// ---------- Date helpers ----------
+
+function formatDate(v) {
+  if (v == null || v === '') return '';
+  var d = (typeof v === 'number') ? new Date(v * 1000) : new Date(v);
+  if (isNaN(d.getTime())) return String(v);
+  return d.toLocaleDateString('ru-RU', { timeZone: 'UTC' });
+}
+function dateToInputValue(v) {
+  if (v == null || v === '') return '';
+  var d = (typeof v === 'number') ? new Date(v * 1000) : new Date(v);
+  if (isNaN(d.getTime())) return '';
+  return d.toISOString().slice(0, 10);
+}
+function inputValueToDate(s) {
+  if (!s) return null;
+  return Math.floor(new Date(s + 'T00:00:00Z').getTime() / 1000);
+}
+function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+// ---------- Numbering ----------
+
+// Инвентарный номер: YY-NNNNN, сквозной по году, не привязан к изделию.
+function computeNextInventoryNumber(year) {
+  if (!year) return '—';
+  var yy = String(year).slice(-2);
+  var re = new RegExp('^' + yy + '-(\\d{5})$');
+  var max = 0;
+  state.records.forEach(function (r) {
+    var m = re.exec(String(r.InventoryNumber || ''));
+    if (m) { var n = parseInt(m[1], 10); if (n > max) max = n; }
+  });
+  var next = max + 1;
+  var padded = String(next);
+  while (padded.length < 5) padded = '0' + padded;
+  return yy + '-' + padded;
+}
+
+function computeNextChangeNumber(designation) {
+  if (!designation) return '—';
+  return (state.changeNumberFloor[String(designation)] || 0) + 1;
+}
+
+function updateProductDependentVisibility() {
+  var show = !!state.selectedProductId;
+  document.getElementById('fProductNameGroup').style.display = show ? '' : 'none';
+  document.getElementById('docFieldsWrap').style.display = show ? '' : 'none';
+}
+
+function updateComputedFields() {
+  var comp = state.selectedProductId ? state.componentsById[state.selectedProductId] : null;
+  document.getElementById('fProductName').value = comp ? comp.name : '—';
+  updateProductDependentVisibility();
+  if (!comp) return;
+
+  if (state.designationAuto) fDesignation.value = autoDesignation();
+  var designation = fDesignation.value.trim();
+
+  var dateVal = document.getElementById('fDate').value;
+  var year = dateVal ? dateVal.slice(0, 4) : '';
+  document.getElementById('fInvNumber').value = year ? computeNextInventoryNumber(year) : '—';
+
+  var changeNumber = designation ? computeNextChangeNumber(designation) : '—';
+  document.getElementById('fChangeNumber').value = changeNumber;
+
+  var docTypeCode = fDocType.value;
+  document.getElementById('fName').value = comp.name ? (comp.name + ' ' + fullNameForDocType(docTypeCode)).trim() : '—';
+
+  if (designation && typeof changeNumber === 'number') {
+    document.getElementById('fFileName').value = designation.replace(/\s+/g, '') + '_изм' + pad2(changeNumber);
+  } else {
+    document.getElementById('fFileName').value = '—';
+  }
+}
+
+// ---------- Register ----------
+
+function resetForm() {
+  document.getElementById('fDate').value = dateToInputValue(Math.floor(Date.now() / 1000));
+  fProductInput.value = '';
+  state.selectedProductId = null;
+  state.designationAuto = true;
+  fDesignation.value = '';
+  document.getElementById('fSheets').value = '1';
+  fFormat.value = FORMATS[0];
+  fFormatOtherRow.style.display = 'none';
+  fFormatOther.value = '';
+  document.getElementById('fNote').value = '';
+  updateComputedFields();
+}
+populateSelects();
+resetForm();
+
+function registerDocument() {
+  if (!state.recordsLoaded) return;
+  if (!state.selectedProductId) { window.alert('Выберите изделие.'); return; }
+  var comp = state.componentsById[state.selectedProductId];
+  var dateVal = document.getElementById('fDate').value;
+  var year = dateVal ? dateVal.slice(0, 4) : '';
+  if (!year) { window.alert('Укажите дату.'); return; }
+  var designation = fDesignation.value.trim();
+  if (!designation) { window.alert('Укажите обозначение документа.'); return; }
+  var format = currentFormat();
+  if (!format) { window.alert('Укажите формат документа.'); return; }
+  var sheets = parseInt(document.getElementById('fSheets').value, 10);
+  if (!sheets || sheets < 1) { window.alert('Укажите количество листов.'); return; }
+
+  var docTypeCode = fDocType.value;
+  var changeNumber = computeNextChangeNumber(designation);
+  var name = (comp.name ? comp.name + ' ' + fullNameForDocType(docTypeCode) : '').trim();
+  var fileName = designation.replace(/\s+/g, '') + '_изм' + pad2(changeNumber);
+
+  var fields = {
+    InventoryNumber: computeNextInventoryNumber(year),
+    IssueDate: inputValueToDate(dateVal),
+    Product: state.selectedProductId,
+    ProductName: comp ? comp.name : '',
+    DocumentDesignation: designation,
+    DocTypeCode: docTypeCode,
+    Sheets: sheets,
+    Format: format,
+    Name: name,
+    FileName: fileName,
+    ChangeNumber: changeNumber,
+    Note: document.getElementById('fNote').value.trim()
+  };
+  // claim the ChangeNumber immediately, before the async write even starts —
+  // computeNextChangeNumber() must never hand out this value again, regardless
+  // of what onRecords delivers in the meantime
+  bumpChangeNumberFloor(fields.DocumentDesignation, fields.ChangeNumber);
+  var btn = document.getElementById('btnRegister');
+  btn.disabled = true;
+  grist.selectedTable.create({ fields: fields }).then(function (result) {
+    var newId = (result && typeof result.id !== 'undefined') ? result.id : (Array.isArray(result) ? result[0].id : undefined);
+    state.records.push(Object.assign({ id: newId }, fields));
+    resetForm();
+    btn.disabled = false;
+  }).catch(function (err) {
+    showError(err);
+    btn.disabled = false;
+  });
+}
+
+// ---------- Registry table (list + inline edit + delete) ----------
+
+var regBody = document.getElementById('regBody');
+var regCount = document.getElementById('regCount');
+var regFilterInput = document.getElementById('regFilterInput');
+var editingId = null;
+
+function productLabelForRecord(r) {
+  if (r.ProductName) return r.ProductName;
+  var comp = state.componentsById[r.Product];
+  return comp ? comp.name : (r.Product ? ('#' + r.Product) : '');
+}
+
+function renderRegistry() {
+  regCount.textContent = state.records.length;
+  var q = (regFilterInput.value || '').trim().toLowerCase();
+  var rows = state.records.slice().sort(function (a, b) {
+    return String(b.InventoryNumber || '').localeCompare(String(a.InventoryNumber || ''), undefined, { numeric: true });
+  });
+  if (q) {
+    rows = rows.filter(function (r) {
+      var hay = [r.InventoryNumber, productLabelForRecord(r), r.DocumentDesignation, r.Name, r.Note]
+        .map(function (v) { return String(v || '').toLowerCase(); }).join(' ');
+      return hay.indexOf(q) !== -1;
+    });
+  }
+
+  if (!rows.length) {
+    regBody.innerHTML = '<div class="reg-empty">' + (state.records.length ? 'Ничего не найдено' : 'Документов пока нет — заполните форму выше') + '</div>';
+    return;
+  }
+
+  var table = document.createElement('table');
+  table.className = 'reg-table';
+  table.innerHTML =
+    '<thead><tr>' +
+    '<th>Инв. номер</th><th>Дата</th><th>Изделие</th><th style="text-align:left">Обозначение</th>' +
+    '<th>Листов</th><th>Формат</th><th style="text-align:left">Наименование</th><th style="text-align:left">Имя файла</th>' +
+    '<th>№ изм.</th><th style="text-align:left">Примечание</th><th></th>' +
+    '</tr></thead><tbody></tbody>';
+  var tbody = table.querySelector('tbody');
+
+  rows.forEach(function (r) {
+    var tr = document.createElement('tr');
+    if (editingId === r.id) {
+      tr.appendChild(editableRow(r));
+    } else {
+      tr.innerHTML =
+        '<td class="reg-dn"></td><td></td><td></td><td class="reg-mono" style="text-align:left"></td>' +
+        '<td></td><td></td><td class="reg-name"></td><td class="reg-mono" style="text-align:left"></td>' +
+        '<td></td><td class="reg-reason"></td><td class="reg-actions"></td>';
+      var c = tr.children;
+      c[0].textContent = r.InventoryNumber || '';
+      c[1].textContent = formatDate(r.IssueDate);
+      c[2].textContent = productLabelForRecord(r);
+      c[3].textContent = r.DocumentDesignation || '';
+      c[4].textContent = r.Sheets || '';
+      c[5].textContent = r.Format || '';
+      c[6].textContent = r.Name || '';
+      c[7].textContent = r.FileName || '';
+      c[8].textContent = r.ChangeNumber || '';
+      c[9].textContent = r.Note || '';
+      var actions = c[10];
+      var editBtn = iconButton('cell-edit-btn', pencilSvg(), 'Редактировать');
+      editBtn.addEventListener('click', function () { editingId = r.id; renderRegistry(); });
+      var delBtn = iconButton('cell-edit-btn del', trashSvg(), 'Удалить');
+      delBtn.addEventListener('click', function () { deleteDocument(r); });
+      actions.appendChild(editBtn);
+      actions.appendChild(delBtn);
+    }
+    tbody.appendChild(tr);
+  });
+
+  regBody.innerHTML = '';
+  regBody.appendChild(table);
+}
+
+function editableRow(r) {
+  var frag = document.createDocumentFragment();
+
+  var tdNum = document.createElement('td');
+  tdNum.className = 'reg-dn'; tdNum.textContent = r.InventoryNumber || '';
+  frag.appendChild(tdNum);
+
+  var tdDate = document.createElement('td');
+  var inDate = document.createElement('input');
+  inDate.type = 'date'; inDate.className = 'form-input mono';
+  inDate.value = dateToInputValue(r.IssueDate);
+  tdDate.appendChild(inDate);
+  frag.appendChild(tdDate);
+
+  var tdProduct = document.createElement('td');
+  tdProduct.textContent = productLabelForRecord(r);
+  frag.appendChild(tdProduct);
+
+  var tdDesignation = document.createElement('td');
+  tdDesignation.style.textAlign = 'left';
+  var inDesignation = document.createElement('input');
+  inDesignation.className = 'form-input mono'; inDesignation.value = r.DocumentDesignation || '';
+  tdDesignation.appendChild(inDesignation);
+  frag.appendChild(tdDesignation);
+
+  var tdSheets = document.createElement('td');
+  var inSheets = document.createElement('input');
+  inSheets.type = 'number'; inSheets.min = '1'; inSheets.step = '1';
+  inSheets.className = 'form-input mono'; inSheets.value = r.Sheets || 1;
+  tdSheets.appendChild(inSheets);
+  frag.appendChild(tdSheets);
+
+  var tdFormat = document.createElement('td');
+  var inFormat = document.createElement('input');
+  inFormat.className = 'form-input mono'; inFormat.value = r.Format || '';
+  tdFormat.appendChild(inFormat);
+  frag.appendChild(tdFormat);
+
+  var tdName = document.createElement('td');
+  tdName.className = 'reg-name';
+  var inName = document.createElement('input');
+  inName.className = 'form-input'; inName.value = r.Name || '';
+  tdName.appendChild(inName);
+  frag.appendChild(tdName);
+
+  var tdFileName = document.createElement('td');
+  tdFileName.style.textAlign = 'left';
+  var inFileName = document.createElement('input');
+  inFileName.className = 'form-input mono'; inFileName.value = r.FileName || '';
+  tdFileName.appendChild(inFileName);
+  frag.appendChild(tdFileName);
+
+  var tdChangeNum = document.createElement('td');
+  tdChangeNum.textContent = r.ChangeNumber || '';
+  frag.appendChild(tdChangeNum);
+
+  var tdNote = document.createElement('td');
+  tdNote.className = 'reg-reason';
+  var taNote = document.createElement('textarea');
+  taNote.className = 'form-textarea'; taNote.value = r.Note || '';
+  tdNote.appendChild(taNote);
+  frag.appendChild(tdNote);
+
+  var tdActions = document.createElement('td');
+  tdActions.className = 'reg-actions';
+  var saveBtn = iconButton('cell-edit-btn save', checkSvg(), 'Сохранить');
+  saveBtn.addEventListener('click', function () {
+    var fields = {
+      IssueDate: inputValueToDate(inDate.value),
+      DocumentDesignation: inDesignation.value.trim(),
+      Sheets: parseInt(inSheets.value, 10) || 1,
+      Format: inFormat.value.trim(),
+      Name: inName.value.trim(),
+      FileName: inFileName.value.trim(),
+      Note: taNote.value.trim()
+    };
+    grist.selectedTable.update({ id: r.id, fields: fields }).then(function () {
+      editingId = null;
+    }).catch(showError);
+  });
+  var cancelBtn = iconButton('cell-edit-btn cancel', xSvg(), 'Отмена');
+  cancelBtn.addEventListener('click', function () { editingId = null; renderRegistry(); });
+  tdActions.appendChild(saveBtn);
+  tdActions.appendChild(cancelBtn);
+  frag.appendChild(tdActions);
+
+  return frag;
+}
+
+function deleteDocument(r) {
+  var ok = window.confirm('Удалить документ № ' + (r.InventoryNumber || '') + '? Действие необратимо.');
+  if (!ok) return;
+  grist.selectedTable.destroy([r.id]).catch(showError);
+}
+
+function iconButton(cls, svg, title) {
+  var btn = document.createElement('button');
+  btn.className = cls; btn.title = title; btn.innerHTML = svg;
+  return btn;
+}
+function pencilSvg() { return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>'; }
+function trashSvg() { return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"/></svg>'; }
+function checkSvg() { return '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>'; }
+function xSvg() { return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>'; }
+
+// ---------- Settings ----------
+
+var overlay = document.getElementById('overlay');
+var settingsPanel = document.getElementById('settingsPanel');
+var sComponentsTable = document.getElementById('sComponentsTable');
+var sDocTypeNames = document.getElementById('sDocTypeNames');
+
+document.getElementById('btnSettings').addEventListener('click', openSettings);
+document.getElementById('settingsClose').addEventListener('click', closeSettings);
+document.getElementById('settingsCancel').addEventListener('click', closeSettings);
+overlay.addEventListener('click', closeSettings);
+
+function openSettings() {
+  sComponentsTable.value = state.options.componentsTableId || '';
+  sDocTypeNames.value = state.options.docTypeNames || defaultDocTypeNamesText();
+  overlay.classList.add('on');
+  settingsPanel.classList.add('on');
+}
+function closeSettings() {
+  overlay.classList.remove('on');
+  settingsPanel.classList.remove('on');
+}
+document.getElementById('settingsSave').addEventListener('click', function () {
+  var newOptions = {
+    componentsTableId: sComponentsTable.value.trim(),
+    docTypeNames: sDocTypeNames.value.trim()
+  };
+  grist.setOption('componentsTableId', newOptions.componentsTableId);
+  grist.setOption('docTypeNames', newOptions.docTypeNames);
+  state.options = newOptions;
+  loadComponents();
+  populateSelects();
+  updateComputedFields();
+  closeSettings();
+});
+
+</script>
+</body>
+</html>
