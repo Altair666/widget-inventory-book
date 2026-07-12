@@ -38,7 +38,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 
 .icon-btn{display:flex;align-items:center;justify-content:center;width:22px;height:22px;border:1px solid transparent;border-radius:4pt;background:transparent;color:var(--tx3);cursor:pointer;padding:0;transition:all .12s}
 .icon-btn:hover{background:var(--surf3);color:var(--tx)}
-.btn-clear-checks{display:flex;align-items:center;justify-content:center;width:26px;height:26px;border:1px solid var(--warn-brd);border-radius:4pt;background:var(--warn-bg);color:var(--warn);cursor:pointer;padding:0;transition:all .12s;flex-shrink:0}
+.btn-clear-checks{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border:1px solid var(--warn-brd);border-radius:var(--r);background:var(--warn-bg);color:var(--warn);cursor:pointer;padding:0;transition:all .12s;flex-shrink:0}
 .btn-clear-checks:hover{background:#FDE9C8;border-color:var(--warn)}
 
 .form-row{display:grid;gap:10px;margin-bottom:10px}
@@ -135,7 +135,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .gen-empty{padding:14px;text-align:center;color:var(--tx3);font-size:11px}
 .gen-card{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:6px 8px;border-bottom:1px solid var(--brd)}
 .gen-card:last-child{border-bottom:none}
-.gen-card-designation{font-family:var(--mono);font-size:11px;color:var(--acc);white-space:nowrap;flex-shrink:0}
+.gen-card-designation{font-family:var(--mono);font-size:11px;color:var(--acc);white-space:nowrap;flex-shrink:0;width:112px;overflow:hidden;text-overflow:ellipsis}
 .gen-card-name{flex:1;min-width:80px;font-size:11px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gen-card-box{display:flex;align-items:center;gap:5px;height:28px;padding:0 8px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf);flex-shrink:0}
 .gen-card-box-label{font-size:11px;font-weight:400;color:var(--tx);white-space:nowrap}
@@ -144,7 +144,8 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .gen-card-format-field{width:60px;cursor:pointer}
 .gen-card-format-other{width:60px;display:none}
 .gen-card-format-other.on{display:block}
-.gen-card-changenum-value{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--grn);background:var(--grn-bg);border:1px solid var(--grn-brd);border-radius:4pt;padding:1px 6px;white-space:nowrap}
+.gen-card-box-change{background:var(--grn-bg);border-color:var(--grn-brd)}
+.gen-card-changenum-value{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--tx);white-space:nowrap}
 .gen-card-remove{border:none;background:transparent;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:0 2px;flex-shrink:0}
 
 /* Settings slide-over */
@@ -212,7 +213,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
         </div>
         <div class="gen-transfer">
           <button class="btn-clear-checks" id="btnClearChecks" title="Очистить все отметки" onclick="clearAllChecks()">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m9 9 6 6M15 9l-6 6"/></svg>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
           </button>
           <button class="btn-transfer" onclick="generateDocList()" title="Сформировать список документов">»</button>
         </div>
@@ -257,7 +258,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.5.4</footer>
+<footer class="ver-footer">v0.5.5</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -827,6 +828,7 @@ function renderGenList() {
 
     var dnSpan = document.createElement('span');
     dnSpan.className = 'gen-card-designation'; dnSpan.textContent = item.designation;
+    dnSpan.title = item.designation;
     card.appendChild(dnSpan);
 
     var nameSpan = document.createElement('span');
@@ -889,7 +891,7 @@ function renderGenList() {
     card.appendChild(sheetsBox);
 
     var changeBox = document.createElement('div');
-    changeBox.className = 'gen-card-box';
+    changeBox.className = 'gen-card-box gen-card-box-change';
     var changeLabel = document.createElement('span');
     changeLabel.className = 'gen-card-box-label'; changeLabel.textContent = 'Изм.';
     var changeNumSpan = document.createElement('span');
