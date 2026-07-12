@@ -122,8 +122,9 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .tree-name{font-size:12px;color:var(--tx2)}
 .tree-matrix td.tm-cb input{width:14px;height:14px;cursor:pointer;accent-color:var(--acc)}
 
-.gen-transfer{display:flex;align-items:center;justify-content:center;align-self:stretch}
-.btn-transfer{width:30px;height:100%;min-height:100px;border:none;border-radius:var(--r);background:#16b378;color:#fff;font-size:15px;font-weight:600;letter-spacing:.05em;cursor:pointer;transition:opacity .15s,transform .1s}
+.gen-transfer{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;align-self:stretch}
+.gen-transfer .icon-btn{flex-shrink:0}
+.btn-transfer{width:30px;flex:1;min-height:60px;border:none;border-radius:var(--r);background:#16b378;color:#fff;font-size:15px;font-weight:600;letter-spacing:.05em;cursor:pointer;transition:opacity .15s,transform .1s}
 .btn-transfer:hover{opacity:.88}
 .btn-transfer:active{transform:scale(.98)}
 
@@ -132,15 +133,16 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .gen-empty{padding:14px;text-align:center;color:var(--tx3);font-size:11px}
 .gen-card{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:6px 8px;border-bottom:1px solid var(--brd)}
 .gen-card:last-child{border-bottom:none}
-.gen-card .form-select,.gen-card .form-input{height:24px;font-size:11px;padding:0 6px}
+.gen-card .form-select,.gen-card .form-input{height:28px;font-size:11px;padding:0 6px}
+.gen-card-designation{font-family:var(--mono);font-size:11px;color:var(--acc);white-space:nowrap;flex-shrink:0}
 .gen-card-name{flex:1;min-width:80px;font-size:11px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.gen-card-designation{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--acc);white-space:nowrap;flex-shrink:0}
 .gen-card-format{flex-shrink:0;width:58px;min-width:58px}
-.gen-card-other{flex-basis:100%;display:none}
+.gen-card-other{flex-shrink:0;width:64px;min-width:64px;display:none}
 .gen-card-other.on{display:block}
-.gen-card-sheets-label{font-size:10px;color:var(--tx3);flex-shrink:0}
-.gen-card-sheets{flex-shrink:0;width:38px;min-width:38px;text-align:center}
-.gen-card-changenum{font-family:var(--mono);font-size:10px;color:var(--grn);background:var(--grn-bg);border:1px solid var(--grn-brd);border-radius:4pt;padding:2px 6px;white-space:nowrap;flex-shrink:0}
+.gen-card-box{display:flex;align-items:center;gap:5px;height:28px;padding:0 8px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf);flex-shrink:0}
+.gen-card-box-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--tx2);white-space:nowrap}
+.gen-card-sheets-input{width:56px;border:none;background:transparent;padding:0;font-family:var(--mono);font-size:11px;color:var(--tx);text-align:center;outline:none}
+.gen-card-changenum-value{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--grn);white-space:nowrap}
 .gen-card-remove{border:none;background:transparent;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:0 2px;flex-shrink:0}
 
 /* Settings slide-over */
@@ -201,18 +203,15 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 
   <!-- BOM TREE / BULK DOCUMENT GENERATION -->
   <div class="panel" id="bomPanel" style="display:none">
-    <div class="ph">
-      <span class="ph-title">Состав изделия и формируемые документы</span>
-      <button class="icon-btn" id="btnClearChecks" title="Очистить все отметки" onclick="clearAllChecks()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m9 9 6 6M15 9l-6 6"/></svg>
-      </button>
-    </div>
     <div class="pb">
       <div class="tree-layout">
         <div class="tree-col">
           <div id="treeBody"><div class="tree-empty">Выберите изделие выше, чтобы увидеть его состав</div></div>
         </div>
         <div class="gen-transfer">
+          <button class="icon-btn" id="btnClearChecks" title="Очистить все отметки" onclick="clearAllChecks()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m9 9 6 6M15 9l-6 6"/></svg>
+          </button>
           <button class="btn-transfer" onclick="generateDocList()" title="Сформировать список документов">»</button>
         </div>
         <div class="gen-col">
@@ -256,7 +255,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.5.1</footer>
+<footer class="ver-footer">v0.5.2</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -735,13 +734,13 @@ function renderGenList() {
     var card = document.createElement('div');
     card.className = 'gen-card';
 
-    var nameSpan = document.createElement('span');
-    nameSpan.className = 'gen-card-name'; nameSpan.textContent = nameForItem(item);
-    card.appendChild(nameSpan);
-
     var dnSpan = document.createElement('span');
     dnSpan.className = 'gen-card-designation'; dnSpan.textContent = item.designation;
     card.appendChild(dnSpan);
+
+    var nameSpan = document.createElement('span');
+    nameSpan.className = 'gen-card-name'; nameSpan.textContent = nameForItem(item);
+    card.appendChild(nameSpan);
 
     var formatSel = buildFormatSelect();
     formatSel.value = item.format;
@@ -760,24 +759,30 @@ function renderGenList() {
       otherInput.classList.toggle('on', item.format === FORMAT_OTHER);
     });
 
+    var sheetsBox = document.createElement('div');
+    sheetsBox.className = 'gen-card-box';
     var sheetsLabel = document.createElement('span');
-    sheetsLabel.className = 'gen-card-sheets-label'; sheetsLabel.textContent = 'Листов';
-    card.appendChild(sheetsLabel);
-
+    sheetsLabel.className = 'gen-card-box-label'; sheetsLabel.textContent = 'Листов';
     var sheetsInput = document.createElement('input');
     sheetsInput.type = 'number'; sheetsInput.min = '1'; sheetsInput.step = '1';
-    sheetsInput.className = 'form-input mono gen-card-sheets';
+    sheetsInput.className = 'gen-card-sheets-input';
     sheetsInput.value = item.sheets;
     sheetsInput.addEventListener('input', function () {
       item.sheets = parseInt(sheetsInput.value, 10) || 1;
     });
-    card.appendChild(sheetsInput);
+    sheetsBox.appendChild(sheetsLabel); sheetsBox.appendChild(sheetsInput);
+    card.appendChild(sheetsBox);
 
+    var changeBox = document.createElement('div');
+    changeBox.className = 'gen-card-box';
+    var changeLabel = document.createElement('span');
+    changeLabel.className = 'gen-card-box-label'; changeLabel.textContent = 'Изм.';
     var changeNumSpan = document.createElement('span');
-    changeNumSpan.className = 'gen-card-changenum';
+    changeNumSpan.className = 'gen-card-changenum-value';
     var previewChangeNum = computeNextChangeNumber(item.designation);
     changeNumSpan.textContent = '№' + (typeof previewChangeNum === 'number' ? previewChangeNum : '—');
-    card.appendChild(changeNumSpan);
+    changeBox.appendChild(changeLabel); changeBox.appendChild(changeNumSpan);
+    card.appendChild(changeBox);
 
     var removeBtn = document.createElement('button');
     removeBtn.className = 'gen-card-remove'; removeBtn.textContent = '×'; removeBtn.title = 'Убрать';
