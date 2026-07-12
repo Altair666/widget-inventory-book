@@ -139,7 +139,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
     <div class="pb">
 
       <div id="docFieldsWrap">
-        <div class="form-row" style="grid-template-columns:130px 120px 1fr 110px 50px 70px 120px 110px 1.4fr">
+        <div class="form-row" style="grid-template-columns:130px 120px 1fr 1.4fr 110px 50px 70px 120px 110px">
           <div class="form-group">
             <label class="form-label">Инв. номер</label>
             <input class="form-input formed-num" id="fInvNumber" readonly value="—">
@@ -153,8 +153,18 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
             <input class="form-input" id="fProductName" readonly value="—">
           </div>
           <div class="form-group">
+            <label class="form-label">Изделие</label>
+            <div class="ac-wrap">
+              <input class="form-input" id="fProductInput" placeholder="Поиск по обозначению или наименованию…" autocomplete="off" oninput="onProductInput()" onfocus="onProductInput()" onblur="onProductBlur()">
+              <div class="ac-drop" id="fProductDrop"></div>
+            </div>
+          </div>
+          <div class="form-group">
             <label class="form-label">Тип документа</label>
-            <select class="form-select" id="fDocType" onchange="onDocTypeChange()"></select>
+            <div class="ac-wrap">
+              <input class="form-input" id="fDocTypeInput" style="cursor:pointer" readonly autocomplete="off" onfocus="openDocTypeDrop()" onclick="openDocTypeDrop()" onblur="onDocTypeBlur()">
+              <div class="ac-drop" id="fDocTypeDrop"></div>
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">ЛУ</label>
@@ -171,13 +181,6 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
           <div class="form-group">
             <label class="form-label">№ изменения</label>
             <input class="form-input formed-num" id="fChangeNumber" readonly value="—">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Изделие</label>
-            <div class="ac-wrap">
-              <input class="form-input" id="fProductInput" placeholder="Поиск по обозначению или наименованию…" autocomplete="off" oninput="onProductInput()" onfocus="onProductInput()" onblur="onProductBlur()">
-              <div class="ac-drop" id="fProductDrop"></div>
-            </div>
           </div>
         </div>
 
@@ -235,7 +238,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.2.2</footer>
+<footer class="ver-footer">v0.3.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -264,11 +267,11 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 <script>
 'use strict';
 
-// code '' = "Д" — bare part designation with no suffix letters (base drawing of a part)
 // fullName defaults are best-effort ЕСКД (ГОСТ 2.102) expansions — verify and correct
 // via Настройки → «Названия типов документов», the widget only reads them from there.
+// Децимальный номер без буквенного суффикса — это спецификация (СП), поэтому
+// отдельного "пустого" типа в списке нет.
 var DOC_TYPES = [
-  { code: '', label: 'Д', fullName: 'Чертёж детали' },
   { code: 'СП', label: 'СП', fullName: 'Спецификация' },
   { code: 'СБ', label: 'СБ', fullName: 'Сборочный чертёж' },
   { code: 'ГЧ', label: 'ГЧ', fullName: 'Габаритный чертёж' },
@@ -307,7 +310,8 @@ var state = {
   componentsLoaded: false,
 
   selectedProductId: null,
-  luSuffix: false // true when the "-ЛУ" suffix should be appended to the computed designation
+  luSuffix: false, // true when the "-ЛУ" suffix should be appended to the computed designation
+  docTypeCode: null // selected DOC_TYPES code, null until populateSelects() picks a default
 };
 
 function setConn(ok, label) {
@@ -494,21 +498,56 @@ function selectProduct(id) {
 
 // ---------- Document type / format / designation ----------
 
-var fDocType = document.getElementById('fDocType');
+var fDocTypeInput = document.getElementById('fDocTypeInput');
+var fDocTypeDrop = document.getElementById('fDocTypeDrop');
 var fFormat = document.getElementById('fFormat');
 var fFormatOther = document.getElementById('fFormatOther');
 var fFormatOtherRow = document.getElementById('fFormatOtherRow');
 
-function populateSelects() {
-  var keepDocType = fDocType.value;
-  fDocType.innerHTML = '';
+// Тип документа — не нативный <select>, а свой дропдаун: в закрытом виде
+// показывается только сокращение (СБ, СП…), в открытом списке — полное
+// название, чтобы не заставлять пользователя помнить расшифровки.
+function renderDocTypeDrop() {
+  fDocTypeDrop.innerHTML = '';
   DOC_TYPES.forEach(function (dt) {
-    var opt = document.createElement('option');
-    opt.value = dt.code;
-    opt.textContent = dt.label + ' — ' + fullNameForDocType(dt.code);
-    fDocType.appendChild(opt);
+    var item = document.createElement('div');
+    item.className = 'ac-item';
+    var code = document.createElement('span');
+    code.className = 'ac-code'; code.textContent = dt.label;
+    var name = document.createElement('span');
+    name.className = 'ac-name'; name.textContent = fullNameForDocType(dt.code);
+    item.appendChild(code); item.appendChild(name);
+    item.addEventListener('mousedown', function (e) {
+      e.preventDefault();
+      selectDocType(dt.code);
+    });
+    fDocTypeDrop.appendChild(item);
   });
-  if (keepDocType) fDocType.value = keepDocType;
+}
+
+function selectDocType(code) {
+  state.docTypeCode = code;
+  updateDocTypeDisplay();
+  fDocTypeDrop.classList.remove('on');
+  onDocTypeChange();
+}
+
+function updateDocTypeDisplay() {
+  var dt = DOC_TYPES.filter(function (d) { return d.code === state.docTypeCode; })[0];
+  fDocTypeInput.value = dt ? dt.label : '';
+}
+
+function openDocTypeDrop() {
+  fDocTypeDrop.classList.add('on');
+}
+function onDocTypeBlur() {
+  setTimeout(function () { fDocTypeDrop.classList.remove('on'); }, 120);
+}
+
+function populateSelects() {
+  renderDocTypeDrop();
+  if (state.docTypeCode === null && DOC_TYPES.length) state.docTypeCode = DOC_TYPES[0].code;
+  updateDocTypeDisplay();
 
   if (fFormat.options.length) return; // format list is static — only build it once
   FORMATS.forEach(function (f) {
@@ -528,7 +567,7 @@ var LU_SUFFIX = '-ЛУ';
 function computeDesignation() {
   var comp = state.selectedProductId ? state.componentsById[state.selectedProductId] : null;
   if (!comp) return '';
-  var code = fDocType.value;
+  var code = state.docTypeCode || '';
   return (comp.decimal_number || '') + code + (state.luSuffix ? LU_SUFFIX : '');
 }
 
@@ -617,7 +656,7 @@ function updateComputedFields() {
   var changeNumber = designation ? computeNextChangeNumber(designation) : '—';
   document.getElementById('fChangeNumber').value = changeNumber;
 
-  var docTypeCode = fDocType.value;
+  var docTypeCode = state.docTypeCode || '';
   document.getElementById('fName').value = comp.name ? (comp.name + '. ' + fullNameForDocType(docTypeCode)).trim() : '—';
 
   if (designation && typeof changeNumber === 'number') {
@@ -658,7 +697,7 @@ function registerDocument() {
   var sheets = parseInt(document.getElementById('fSheets').value, 10);
   if (!sheets || sheets < 1) { window.alert('Укажите количество листов.'); return; }
 
-  var docTypeCode = fDocType.value;
+  var docTypeCode = state.docTypeCode || '';
   var changeNumber = computeNextChangeNumber(designation);
   var name = (comp.name ? comp.name + '. ' + fullNameForDocType(docTypeCode) : '').trim();
   var fileName = designation.replace(/\s+/g, '') + '_изм' + pad2(changeNumber) + '.pdf';
