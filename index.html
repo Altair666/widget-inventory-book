@@ -109,6 +109,10 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .btn-suffix:hover{background:var(--brd)}
 .btn-suffix.active{background:var(--grn-bg);border-color:var(--grn-brd);color:var(--grn)}
 
+.form-input.dropdown-input{background:#f7f7f7;color:var(--tx);cursor:pointer;padding-right:26px}
+.form-input.dropdown-input:focus{border-color:var(--acc);background:var(--surf)}
+.dropdown-arrow{position:absolute;right:9px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--tx3)}
+
 /* Settings slide-over */
 #overlay{position:fixed;inset:0;background:rgba(0,0,0,.15);display:none;z-index:190}
 #overlay.on{display:block}
@@ -162,7 +166,8 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
           <div class="form-group">
             <label class="form-label">Тип документа</label>
             <div class="ac-wrap">
-              <input class="form-input" id="fDocTypeInput" style="cursor:pointer" readonly autocomplete="off" onfocus="openDocTypeDrop()" onclick="openDocTypeDrop()" onblur="onDocTypeBlur()">
+              <input class="form-input dropdown-input" id="fDocTypeInput" readonly autocomplete="off" onfocus="openDocTypeDrop()" onclick="openDocTypeDrop()" onblur="onDocTypeBlur()">
+              <svg class="dropdown-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
               <div class="ac-drop" id="fDocTypeDrop"></div>
             </div>
           </div>
@@ -238,7 +243,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.3.1</footer>
+<footer class="ver-footer">v0.3.2</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
