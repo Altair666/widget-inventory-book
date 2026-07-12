@@ -272,7 +272,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.8.0</footer>
+<footer class="ver-footer">v0.9.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -1368,10 +1368,8 @@ function editableRow(r) {
   frag.appendChild(tdProduct);
 
   var tdDesignation = document.createElement('td');
-  tdDesignation.style.textAlign = 'left';
-  var inDesignation = document.createElement('input');
-  inDesignation.className = 'form-input mono'; inDesignation.value = r.DocumentDesignation || '';
-  tdDesignation.appendChild(inDesignation);
+  tdDesignation.className = 'reg-mono'; tdDesignation.style.textAlign = 'left';
+  tdDesignation.textContent = r.DocumentDesignation || '';
   frag.appendChild(tdDesignation);
 
   var tdSheets = document.createElement('td');
@@ -1389,9 +1387,7 @@ function editableRow(r) {
 
   var tdName = document.createElement('td');
   tdName.className = 'reg-name';
-  var inName = document.createElement('input');
-  inName.className = 'form-input'; inName.value = r.Name || '';
-  tdName.appendChild(inName);
+  tdName.textContent = r.Name || '';
   frag.appendChild(tdName);
 
   var tdFileName = document.createElement('td');
@@ -1414,10 +1410,8 @@ function editableRow(r) {
   saveBtn.addEventListener('click', function () {
     var fields = {
       IssueDate: inputValueToDate(inDate.value),
-      DocumentDesignation: inDesignation.value.trim(),
       Sheets: parseInt(inSheets.value, 10) || 1,
       Format: inFormat.value.trim(),
-      Name: inName.value.trim(),
       FileName: inFileName.value.trim(),
       Note: taNote.value.trim()
     };
