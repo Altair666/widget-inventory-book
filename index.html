@@ -255,7 +255,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.5.2</footer>
+<footer class="ver-footer">v0.5.3</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -330,7 +330,8 @@ var state = {
   componentsById: {},   // id -> {id, name, primary_use, decimal_number, org_prefix, serial}
   componentsLoaded: false,
 
-  selectedProductId: null,
+  selectedProductId: null,   // top-level assembly id (walked up from the searched component) — used for ProductName/Product
+  searchedComponentId: null, // the component actually picked in the search box — only this row gets default checks
 
   childrenByParent: {}, // parentId -> [id,...], for the BOM tree
   treeRows: [],          // [{id, depth}] flattened BOM of the selected product
@@ -523,8 +524,24 @@ function onProductBlur() {
   setTimeout(function () { fProductDrop.classList.remove('on'); }, 120);
 }
 
+// Изделие/наименование изделия всегда должны показывать наивысшую по
+// цепочке primary_use сборку, даже если в поиске выбрана вложенная деталь.
+function findTopLevelId(id) {
+  var current = id;
+  var visited = {};
+  while (!visited[current]) {
+    visited[current] = true;
+    var comp = state.componentsById[current];
+    var parent = comp ? (comp.primary_use || 0) : 0;
+    if (!parent || !state.componentsById[parent]) break;
+    current = parent;
+  }
+  return current;
+}
+
 function selectProduct(id) {
-  state.selectedProductId = id;
+  state.selectedProductId = findTopLevelId(id);
+  state.searchedComponentId = id;
   var comp = state.componentsById[id];
   fProductInput.value = comp ? (comp.decimal_number || '') : ('#' + id);
   fProductDrop.classList.remove('on');
@@ -591,11 +608,14 @@ function rebuildTreeForSelectedProduct() {
   }
   state.treeRows = collectDescendants(state.selectedProductId);
   var cells = {};
-  state.treeRows.forEach(function (row) {
+  state.treeRows.forEach(function (row) { cells[row.id] = {}; });
+  var targetId = (state.searchedComponentId != null) ? state.searchedComponentId : state.selectedProductId;
+  var targetRow = state.treeRows.filter(function (row) { return row.id === targetId; })[0];
+  if (targetRow) {
     var rowCells = {};
-    defaultCodesForRow(row).forEach(function (c) { rowCells[c] = true; });
-    cells[row.id] = rowCells;
-  });
+    defaultCodesForRow(targetRow).forEach(function (c) { rowCells[c] = true; });
+    cells[targetRow.id] = rowCells;
+  }
   state.cellChecked = cells;
   renderTree();
 }
