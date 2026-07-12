@@ -2,7 +2,7 @@
   "name": "@altair666/widget-inventory-book",
   "description": "Инвентарная книга учёта документов",
   "homePage": "https://github.com/Altair666/widget-inventory-book",
-  "version": "0.5.11",
+  "version": "0.5.12",
   "grist": {
     "name": "Inventory book",
     "url": "https://altair666.github.io/widget-inventory-book/index.html",
