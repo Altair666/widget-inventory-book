@@ -272,7 +272,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.7.0</footer>
+<footer class="ver-footer">v0.8.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -1322,7 +1322,7 @@ function renderRegistry() {
       var c = tr.children;
       c[0].textContent = r.InventoryNumber || '';
       c[1].textContent = formatDate(r.IssueDate);
-      c[2].textContent = r.ChangeNumber || '';
+      c[2].textContent = (r.ChangeNumber != null) ? r.ChangeNumber : '';
       c[3].textContent = productLabelForRecord(r);
       c[4].textContent = r.DocumentDesignation || '';
       c[5].textContent = r.Sheets || '';
@@ -1360,7 +1360,7 @@ function editableRow(r) {
   frag.appendChild(tdDate);
 
   var tdChangeNum = document.createElement('td');
-  tdChangeNum.textContent = r.ChangeNumber || '';
+  tdChangeNum.textContent = (r.ChangeNumber != null) ? r.ChangeNumber : '';
   frag.appendChild(tdChangeNum);
 
   var tdProduct = document.createElement('td');
