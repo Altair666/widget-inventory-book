@@ -105,6 +105,10 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .tag{display:inline-flex;align-items:center;font-family:var(--mono);font-size:10px;padding:1px 5px;border-radius:4pt}
 .tag-blue{background:var(--acc-bg);color:var(--acc)}
 
+.btn-suffix{height:32px;flex-shrink:0;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf3);color:var(--tx);font-family:inherit;font-size:11px;font-weight:600;padding:0 10px;cursor:pointer;transition:background .12s,color .12s,border-color .12s}
+.btn-suffix:hover{background:var(--brd)}
+.btn-suffix.active{background:var(--acc-bg);border-color:var(--acc-brd);color:var(--acc)}
+
 /* Settings slide-over */
 #overlay{position:fixed;inset:0;background:rgba(0,0,0,.15);display:none;z-index:190}
 #overlay.on{display:block}
@@ -134,7 +138,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
     </div>
     <div class="pb">
 
-      <div class="form-row" style="grid-template-columns:130px 120px 1fr 1fr">
+      <div class="form-row" style="grid-template-columns:130px 120px 1fr">
         <div class="form-group">
           <label class="form-label">Инв. номер</label>
           <input class="form-input formed-num" id="fInvNumber" readonly value="—">
@@ -143,16 +147,19 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
           <label class="form-label">Дата</label>
           <input class="form-input mono" type="date" id="fDate" onchange="onFormChange()">
         </div>
+        <div class="form-group" id="fProductNameGroup">
+          <label class="form-label">Наименование изделия</label>
+          <input class="form-input" id="fProductName" readonly value="—">
+        </div>
+      </div>
+
+      <div class="form-row" style="grid-template-columns:1fr">
         <div class="form-group">
           <label class="form-label">Изделие</label>
           <div class="ac-wrap">
             <input class="form-input" id="fProductInput" placeholder="Поиск по обозначению или наименованию…" autocomplete="off" oninput="onProductInput()" onfocus="onProductInput()" onblur="onProductBlur()">
             <div class="ac-drop" id="fProductDrop"></div>
           </div>
-        </div>
-        <div class="form-group" id="fProductNameGroup">
-          <label class="form-label">Наименование изделия</label>
-          <input class="form-input" id="fProductName" readonly value="—">
         </div>
       </div>
 
@@ -164,7 +171,10 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
           </div>
           <div class="form-group">
             <label class="form-label">Обозначение документа</label>
-            <input class="form-input mono" id="fDesignation" oninput="onDesignationEdited()">
+            <div style="display:flex;gap:6px">
+              <input class="form-input mono" style="flex:1" id="fDesignation" oninput="onDesignationEdited()">
+              <button type="button" class="btn-suffix" id="btnLU" title="Добавить/убрать суффикс -ЛУ" onclick="toggleLUSuffix()">ЛУ</button>
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">Листов</label>
@@ -234,7 +244,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.1.0</footer>
+<footer class="ver-footer">v0.2.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -344,7 +354,7 @@ function defaultDocTypeNamesText() {
 function bumpChangeNumberFloor(designation, n) {
   if (!designation || isNaN(n)) return;
   var key = String(designation);
-  if (!state.changeNumberFloor[key] || n > state.changeNumberFloor[key]) {
+  if (!(key in state.changeNumberFloor) || n > state.changeNumberFloor[key]) {
     state.changeNumberFloor[key] = n;
   }
 }
@@ -486,7 +496,7 @@ function onProductBlur() {
 function selectProduct(id) {
   state.selectedProductId = id;
   var comp = state.componentsById[id];
-  fProductInput.value = comp ? (comp.decimal_number + ' — ' + comp.name) : ('#' + id);
+  fProductInput.value = comp ? (comp.decimal_number || '') : ('#' + id);
   fProductDrop.classList.remove('on');
   state.designationAuto = true;
   onFormChange();
@@ -526,7 +536,7 @@ function autoDesignation() {
   var comp = state.selectedProductId ? state.componentsById[state.selectedProductId] : null;
   if (!comp) return '';
   var code = fDocType.value;
-  return (comp.decimal_number || '') + (code ? ' ' + code : '');
+  return (comp.decimal_number || '') + code;
 }
 
 function onDocTypeChange() {
@@ -537,6 +547,25 @@ function onDocTypeChange() {
 function onDesignationEdited() {
   state.designationAuto = false;
   onFormChange();
+}
+
+var LU_SUFFIX = '-ЛУ';
+function toggleLUSuffix() {
+  var v = fDesignation.value;
+  if (v.slice(-LU_SUFFIX.length) === LU_SUFFIX) {
+    fDesignation.value = v.slice(0, -LU_SUFFIX.length);
+  } else {
+    fDesignation.value = v + LU_SUFFIX;
+  }
+  state.designationAuto = false;
+  onFormChange();
+}
+
+function updateLUButtonState() {
+  var btn = document.getElementById('btnLU');
+  if (!btn) return;
+  var v = fDesignation.value || '';
+  btn.classList.toggle('active', v.slice(-LU_SUFFIX.length) === LU_SUFFIX);
 }
 
 function onFormatChange() {
@@ -588,9 +617,12 @@ function computeNextInventoryNumber(year) {
   return yy + '-' + padded;
 }
 
+// Первая регистрация документа под данным обозначением получает № изменения 0
+// (исходный выпуск), далее — по возрастанию.
 function computeNextChangeNumber(designation) {
   if (!designation) return '—';
-  return (state.changeNumberFloor[String(designation)] || 0) + 1;
+  var key = String(designation);
+  return (key in state.changeNumberFloor) ? state.changeNumberFloor[key] + 1 : 0;
 }
 
 function updateProductDependentVisibility() {
@@ -603,10 +635,12 @@ function updateComputedFields() {
   var comp = state.selectedProductId ? state.componentsById[state.selectedProductId] : null;
   document.getElementById('fProductName').value = comp ? comp.name : '—';
   updateProductDependentVisibility();
+  updateLUButtonState();
   if (!comp) return;
 
   if (state.designationAuto) fDesignation.value = autoDesignation();
   var designation = fDesignation.value.trim();
+  updateLUButtonState();
 
   var dateVal = document.getElementById('fDate').value;
   var year = dateVal ? dateVal.slice(0, 4) : '';
@@ -616,10 +650,10 @@ function updateComputedFields() {
   document.getElementById('fChangeNumber').value = changeNumber;
 
   var docTypeCode = fDocType.value;
-  document.getElementById('fName').value = comp.name ? (comp.name + ' ' + fullNameForDocType(docTypeCode)).trim() : '—';
+  document.getElementById('fName').value = comp.name ? (comp.name + '. ' + fullNameForDocType(docTypeCode)).trim() : '—';
 
   if (designation && typeof changeNumber === 'number') {
-    document.getElementById('fFileName').value = designation.replace(/\s+/g, '') + '_изм' + pad2(changeNumber);
+    document.getElementById('fFileName').value = designation.replace(/\s+/g, '') + '_изм' + pad2(changeNumber) + '.pdf';
   } else {
     document.getElementById('fFileName').value = '—';
   }
@@ -659,8 +693,8 @@ function registerDocument() {
 
   var docTypeCode = fDocType.value;
   var changeNumber = computeNextChangeNumber(designation);
-  var name = (comp.name ? comp.name + ' ' + fullNameForDocType(docTypeCode) : '').trim();
-  var fileName = designation.replace(/\s+/g, '') + '_изм' + pad2(changeNumber);
+  var name = (comp.name ? comp.name + '. ' + fullNameForDocType(docTypeCode) : '').trim();
+  var fileName = designation.replace(/\s+/g, '') + '_изм' + pad2(changeNumber) + '.pdf';
 
   var fields = {
     InventoryNumber: computeNextInventoryNumber(year),
