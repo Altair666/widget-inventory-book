@@ -109,6 +109,8 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 
 /* ── BOM tree / bulk document generation ── */
 .tree-layout{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}
+.tree-layout.standalone .tree-col,.tree-layout.standalone .gen-transfer{display:none}
+.tree-layout.standalone .gen-col{flex:1 1 100%}
 .tree-col{flex:1.2;min-width:340px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);max-height:360px;overflow:auto}
 .tree-empty{padding:16px;text-align:center;color:var(--tx3);font-size:12px}
 
@@ -136,7 +138,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .gen-card{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:6px 8px;border-bottom:1px solid var(--brd)}
 .gen-card:last-child{border-bottom:none}
 .gen-card-designation{font-family:var(--mono);font-size:11px;color:var(--acc);white-space:nowrap;flex-shrink:0;width:112px;overflow:hidden;text-overflow:ellipsis}
-.gen-card-name{flex:1;min-width:80px;font-size:11px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gen-card-name{flex:1;max-width:50%;min-width:60px;font-size:11px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3}
 .gen-card-box{display:flex;align-items:center;gap:5px;height:28px;padding:0 8px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf);flex-shrink:0}
 .gen-card-box-label{font-size:11px;font-weight:400;color:var(--tx);white-space:nowrap}
 .gen-card-box select,.gen-card-box input{border:none;background:transparent;padding:0;height:auto;font-family:inherit;font-size:11px;color:var(--tx);outline:none}
@@ -258,7 +260,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.5.8</footer>
+<footer class="ver-footer">v0.5.9</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -667,14 +669,34 @@ function findTopLevelId(id) {
   return current;
 }
 
+// ESPD/ESTD-sourced items have no BOM and no деталь/сборка roles to pick
+// document types for — each such item IS one document already. Skip the
+// tree/checkbox step entirely and drop it straight into the generated list.
 function selectProduct(id) {
   state.selectedProductId = findTopLevelId(id);
   state.searchedComponentId = id;
   var comp = state.componentsById[id];
   fProductInput.value = comp ? (comp.decimal_number || '') : ('#' + id);
   fProductDrop.classList.remove('on');
-  state.generatedList = [];
-  rebuildTreeForSelectedProduct();
+
+  var topComp = state.componentsById[state.selectedProductId];
+  if (topComp && topComp.source !== 'cmp') {
+    state.treeRows = [];
+    state.cellChecked = {};
+    renderTree();
+    state.generatedList = [{
+      compId: state.selectedProductId,
+      code: '',
+      label: '',
+      designation: topComp.decimal_number || '',
+      format: FORMATS[0],
+      formatOther: '',
+      sheets: 1
+    }];
+  } else {
+    state.generatedList = [];
+    rebuildTreeForSelectedProduct();
+  }
   renderGenList();
   updateBomPanelVisibility();
   onFormChange();
@@ -822,6 +844,9 @@ function renderTree() {
 
 function updateBomPanelVisibility() {
   document.getElementById('bomPanel').style.display = state.selectedProductId ? '' : 'none';
+  var topComp = state.componentsById[state.selectedProductId];
+  var standalone = !!(topComp && topComp.source !== 'cmp');
+  document.querySelector('.tree-layout').classList.toggle('standalone', standalone);
 }
 
 // ---------- Generated document list (queued for bulk registration) ----------
