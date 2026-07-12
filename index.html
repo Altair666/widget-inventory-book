@@ -138,19 +138,16 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
     </div>
     <div class="pb">
 
-      <div class="form-row" style="grid-template-columns:130px 120px">
-        <div class="form-group">
-          <label class="form-label">Инв. номер</label>
-          <input class="form-input formed-num" id="fInvNumber" readonly value="—">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Дата</label>
-          <input class="form-input mono" type="date" id="fDate" onchange="onFormChange()">
-        </div>
-      </div>
-
       <div id="docFieldsWrap">
-        <div class="form-row" style="grid-template-columns:1fr 110px 50px 70px 120px 110px 1.4fr">
+        <div class="form-row" style="grid-template-columns:130px 120px 1fr 110px 50px 70px 120px 110px 1.4fr">
+          <div class="form-group">
+            <label class="form-label">Инв. номер</label>
+            <input class="form-input formed-num" id="fInvNumber" readonly value="—">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Дата</label>
+            <input class="form-input mono" type="date" id="fDate" onchange="onFormChange()">
+          </div>
           <div class="form-group">
             <label class="form-label">Наименование изделия</label>
             <input class="form-input" id="fProductName" readonly value="—">
@@ -238,7 +235,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.2.1</footer>
+<footer class="ver-footer">v0.2.2</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
