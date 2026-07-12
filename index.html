@@ -260,7 +260,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.5.16</footer>
+<footer class="ver-footer">v0.5.17</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -865,7 +865,7 @@ function generateDocList() {
           compId: row.id,
           code: dt.code,
           label: dt.label,
-          designation: (comp.decimal_number || '') + dt.code,
+          designation: (comp.decimal_number || '') + (dt.label === 'ЛУ' ? '-' : '') + dt.code,
           format: FORMATS[0],
           formatOther: '',
           sheets: 1
