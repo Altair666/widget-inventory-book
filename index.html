@@ -105,17 +105,9 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .tag{display:inline-flex;align-items:center;font-family:var(--mono);font-size:10px;padding:1px 5px;border-radius:4pt}
 .tag-blue{background:var(--acc-bg);color:var(--acc)}
 
-.btn-suffix{height:32px;flex-shrink:0;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf3);color:var(--tx);font-family:inherit;font-size:11px;font-weight:600;padding:0 10px;cursor:pointer;transition:background .12s,color .12s,border-color .12s}
-.btn-suffix:hover{background:var(--brd)}
-.btn-suffix.active{background:var(--grn-bg);border-color:var(--grn-brd);color:var(--grn)}
-
-.form-input.dropdown-input{background:#f7f7f7;color:var(--tx);cursor:pointer;padding-right:26px}
-.form-input.dropdown-input:focus{border-color:var(--acc);background:var(--surf)}
-.dropdown-arrow{position:absolute;right:9px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--tx3)}
-
 /* ── BOM tree / bulk document generation ── */
 .tree-layout{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}
-.tree-col{flex:2.2;min-width:480px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);max-height:360px;overflow:auto}
+.tree-col{flex:1.6;min-width:420px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);max-height:360px;overflow:auto}
 .tree-empty{padding:16px;text-align:center;color:var(--tx3);font-size:12px}
 
 .tree-matrix{border-collapse:collapse;font-size:12px;white-space:nowrap}
@@ -135,13 +127,20 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .btn-transfer:hover{opacity:.88}
 .btn-transfer:active{transform:scale(.98)}
 
-.gen-col{flex:1;min-width:220px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);display:flex;flex-direction:column;max-height:360px}
+.gen-col{flex:1.4;min-width:300px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);display:flex;flex-direction:column;max-height:360px}
 .gen-list{overflow-y:auto;flex:1}
 .gen-empty{padding:14px;text-align:center;color:var(--tx3);font-size:11px}
-.gen-item{display:flex;align-items:center;gap:6px;padding:4px 8px;border-bottom:1px solid var(--brd);font-family:var(--mono);font-size:11px;color:var(--tx)}
-.gen-item:last-child{border-bottom:none}
-.gen-item span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.gen-item button{border:none;background:transparent;color:var(--red);cursor:pointer;font-size:13px;line-height:1;padding:0 2px}
+.gen-card{display:flex;flex-direction:column;gap:5px;padding:7px 8px;border-bottom:1px solid var(--brd)}
+.gen-card:last-child{border-bottom:none}
+.gen-card-top{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.gen-card-designation{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--acc);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gen-card-remove{border:none;background:transparent;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:0 2px;flex-shrink:0}
+.gen-card-name{font-size:11px;color:var(--tx2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gen-card-row{display:flex;gap:6px;align-items:center}
+.gen-card-row .form-select,.gen-card-row .form-input{height:26px;font-size:11px;padding:0 6px}
+.gen-card-format{flex:1.3;min-width:0}
+.gen-card-sheets{flex:.7;min-width:0}
+.gen-card-changenum{font-family:var(--mono);font-size:10px;color:var(--grn);background:var(--grn-bg);border:1px solid var(--grn-brd);border-radius:4pt;padding:2px 6px;white-space:nowrap;flex-shrink:0}
 
 /* Settings slide-over */
 #overlay{position:fixed;inset:0;background:rgba(0,0,0,.15);display:none;z-index:190}
@@ -173,7 +172,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
     <div class="pb">
 
       <div id="docFieldsWrap">
-        <div class="form-row" style="grid-template-columns:130px 120px 1fr 1.4fr 110px 50px 70px 120px 110px">
+        <div class="form-row" style="grid-template-columns:130px 120px 1fr 1.4fr;margin-bottom:0">
           <div class="form-group">
             <label class="form-label">Инв. номер</label>
             <input class="form-input formed-num" id="fInvNumber" readonly value="—">
@@ -193,59 +192,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
               <div class="ac-drop" id="fProductDrop"></div>
             </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">Тип документа</label>
-            <div class="ac-wrap">
-              <input class="form-input dropdown-input" id="fDocTypeInput" readonly autocomplete="off" onfocus="openDocTypeDrop()" onclick="openDocTypeDrop()" onblur="onDocTypeBlur()">
-              <svg class="dropdown-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
-              <div class="ac-drop" id="fDocTypeDrop"></div>
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">ЛУ</label>
-            <button type="button" class="btn-suffix" id="btnLU" title="Добавить/убрать суффикс -ЛУ к обозначению" onclick="toggleLUSuffix()" style="width:100%">ЛУ</button>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Листов</label>
-            <input class="form-input mono" type="number" min="1" step="1" id="fSheets" value="1">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Формат</label>
-            <select class="form-select" id="fFormat" onchange="onFormatChange()"></select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">№ изменения</label>
-            <input class="form-input formed-num" id="fChangeNumber" readonly value="—">
-          </div>
         </div>
-
-        <div class="form-row" style="grid-template-columns:1fr 1fr" id="fFormatOtherRow">
-          <div class="form-group">
-            <label class="form-label">Формат (свой вариант)</label>
-            <input class="form-input" id="fFormatOther" placeholder="напр. 3хА2">
-          </div>
-        </div>
-
-        <div class="form-row" style="grid-template-columns:1fr 1fr">
-          <div class="form-group">
-            <label class="form-label">Наименование</label>
-            <input class="form-input" id="fName" readonly value="—">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Имя файла</label>
-            <input class="form-input mono" id="fFileName" readonly value="—">
-          </div>
-        </div>
-
-        <div class="form-group" style="margin-bottom:12px">
-          <label class="form-label">Примечание</label>
-          <textarea class="form-textarea" id="fNote" placeholder="Причина изменений"></textarea>
-        </div>
-
-        <button class="btn-add" id="btnRegister" onclick="registerDocument()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-          Зарегистрировать документ
-        </button>
       </div>
 
     </div>
@@ -272,7 +219,12 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
         </div>
       </div>
 
-      <div style="margin-top:12px">
+      <div class="form-group" style="margin:12px 0">
+        <label class="form-label">Примечание</label>
+        <textarea class="form-textarea" id="fNote" placeholder="Причина изменений"></textarea>
+      </div>
+
+      <div>
         <button class="btn-add" id="btnRegisterBatch" onclick="registerGeneratedDocs()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
           Зарегистрировать документы
@@ -303,7 +255,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.4.0</footer>
+<footer class="ver-footer">v0.5.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -320,7 +272,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
     <div class="form-group" style="margin-bottom:12px">
       <label class="form-label">Названия типов документов</label>
       <textarea class="form-textarea" id="sDocTypeNames"></textarea>
-      <span class="form-hint">По строке на тип: код=полное название. Используется для поля «Наименование». Проверьте и поправьте — часть названий проставлена по умолчанию и может не совпадать с принятой у вас номенклатурой.</span>
+      <span class="form-hint">По строке на тип: сокращение=полное название (напр. СБ=Сборочный чертёж). Используется для поля «Наименование». Проверьте и поправьте — часть названий проставлена по умолчанию и может не совпадать с принятой у вас номенклатурой.</span>
     </div>
   </div>
   <div class="panel-footer">
@@ -334,10 +286,14 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 
 // fullName defaults are best-effort ЕСКД (ГОСТ 2.102) expansions — verify and correct
 // via Настройки → «Названия типов документов», the widget only reads them from there.
-// Децимальный номер без буквенного суффикса — это спецификация (СП), поэтому
-// отдельного "пустого" типа в списке нет.
+// Децимальный номер без буквенного суффикса обозначает и деталь (Д), и
+// спецификацию (СП) — оба типа сознательно имеют code:'', поэтому далее
+// везде используется dt.label как уникальный ключ (не dt.code). skipNameSuffix
+// у «Д» означает, что для конечной детали в «Наименование» тип документа не
+// дописывается (см. nameForItem()).
 var DOC_TYPES = [
-  { code: 'СП', label: 'СП', fullName: 'Спецификация' },
+  { code: '', label: 'Д', fullName: 'Чертёж детали', skipNameSuffix: true },
+  { code: '', label: 'СП', fullName: 'Спецификация' },
   { code: 'СБ', label: 'СБ', fullName: 'Сборочный чертёж' },
   { code: 'ГЧ', label: 'ГЧ', fullName: 'Габаритный чертёж' },
   { code: 'ТУ', label: 'ТУ', fullName: 'Технические условия' },
@@ -375,13 +331,11 @@ var state = {
   componentsLoaded: false,
 
   selectedProductId: null,
-  luSuffix: false, // true when the "-ЛУ" suffix should be appended to the computed designation
-  docTypeCode: null, // selected DOC_TYPES code, null until populateSelects() picks a default
 
   childrenByParent: {}, // parentId -> [id,...], for the BOM tree
   treeRows: [],          // [{id, depth}] flattened BOM of the selected product
-  cellChecked: {},       // componentId -> { docTypeCode -> true }
-  generatedList: []      // [{compId, code, designation}, ...] queued for bulk registration
+  cellChecked: {},       // componentId -> { docTypeLabel -> true }
+  generatedList: []      // [{compId, code, label, designation, format, formatOther, sheets}, ...] queued for bulk registration
 };
 
 function setConn(ok, label) {
@@ -394,22 +348,22 @@ function docTypeNameOverrides() {
   String(state.options.docTypeNames || '').split('\n').forEach(function (line) {
     var i = line.indexOf('=');
     if (i === -1) return;
-    var code = line.slice(0, i).trim();
+    var label = line.slice(0, i).trim();
     var name = line.slice(i + 1).trim();
-    if (name) map[code] = name;
+    if (name) map[label] = name;
   });
   return map;
 }
 
-function fullNameForDocType(code) {
+function fullNameForDocType(label) {
   var overrides = docTypeNameOverrides();
-  if (Object.prototype.hasOwnProperty.call(overrides, code)) return overrides[code];
-  var dt = DOC_TYPES.filter(function (d) { return d.code === code; })[0];
+  if (Object.prototype.hasOwnProperty.call(overrides, label)) return overrides[label];
+  var dt = DOC_TYPES.filter(function (d) { return d.label === label; })[0];
   return dt ? dt.fullName : '';
 }
 
 function defaultDocTypeNamesText() {
-  return DOC_TYPES.map(function (dt) { return dt.code + '=' + dt.fullName; }).join('\n');
+  return DOC_TYPES.map(function (dt) { return dt.label + '=' + dt.fullName; }).join('\n');
 }
 
 // changeNumberFloor is intentionally monotonic (only moves up): grist.onRecords
@@ -445,7 +399,6 @@ grist.ready({ requiredAccess: 'full' });
 
 grist.onOptions(function (options) {
   state.options = Object.assign({}, DEFAULT_OPTIONS, options || {});
-  populateSelects();
   updateComputedFields();
   loadComponents();
 });
@@ -582,104 +535,23 @@ function selectProduct(id) {
   onFormChange();
 }
 
-// ---------- Document type / format / designation ----------
+function onFormChange() { updateComputedFields(); }
 
-var fDocTypeInput = document.getElementById('fDocTypeInput');
-var fDocTypeDrop = document.getElementById('fDocTypeDrop');
-var fFormat = document.getElementById('fFormat');
-var fFormatOther = document.getElementById('fFormatOther');
-var fFormatOtherRow = document.getElementById('fFormatOtherRow');
-
-// Тип документа — не нативный <select>, а свой дропдаун: в закрытом виде
-// показывается только сокращение (СБ, СП…), в открытом списке — полное
-// название, чтобы не заставлять пользователя помнить расшифровки.
-function renderDocTypeDrop() {
-  fDocTypeDrop.innerHTML = '';
-  DOC_TYPES.forEach(function (dt) {
-    var item = document.createElement('div');
-    item.className = 'ac-item';
-    var code = document.createElement('span');
-    code.className = 'ac-code'; code.textContent = dt.label;
-    var name = document.createElement('span');
-    name.className = 'ac-name'; name.textContent = fullNameForDocType(dt.code);
-    item.appendChild(code); item.appendChild(name);
-    item.addEventListener('mousedown', function (e) {
-      e.preventDefault();
-      selectDocType(dt.code);
-    });
-    fDocTypeDrop.appendChild(item);
-  });
-}
-
-function selectDocType(code) {
-  state.docTypeCode = code;
-  updateDocTypeDisplay();
-  fDocTypeDrop.classList.remove('on');
-  onDocTypeChange();
-}
-
-function updateDocTypeDisplay() {
-  var dt = DOC_TYPES.filter(function (d) { return d.code === state.docTypeCode; })[0];
-  fDocTypeInput.value = dt ? dt.label : '';
-}
-
-function openDocTypeDrop() {
-  fDocTypeDrop.classList.add('on');
-}
-function onDocTypeBlur() {
-  setTimeout(function () { fDocTypeDrop.classList.remove('on'); }, 120);
-}
-
-function populateSelects() {
-  renderDocTypeDrop();
-  if (state.docTypeCode === null && DOC_TYPES.length) state.docTypeCode = DOC_TYPES[0].code;
-  updateDocTypeDisplay();
-
-  if (fFormat.options.length) return; // format list is static — only build it once
+// Строит <select> формата (FORMATS + «Другое…») — используется по одному
+// экземпляру на каждую карточку в формируемом списке документов.
+function buildFormatSelect() {
+  var sel = document.createElement('select');
+  sel.className = 'form-select gen-card-format';
   FORMATS.forEach(function (f) {
     var opt = document.createElement('option');
     opt.value = f; opt.textContent = f;
-    fFormat.appendChild(opt);
+    sel.appendChild(opt);
   });
   var otherOpt = document.createElement('option');
   otherOpt.value = FORMAT_OTHER; otherOpt.textContent = 'Другое…';
-  fFormat.appendChild(otherOpt);
+  sel.appendChild(otherOpt);
+  return sel;
 }
-
-// Обозначение документа полностью выводится из выбранного изделия + типа
-// документа (+ опциональный суффикс -ЛУ) — отдельного поля для ручного
-// ввода нет, т.к. оно бы дублировало выбор изделия.
-var LU_SUFFIX = '-ЛУ';
-function computeDesignation() {
-  var comp = state.selectedProductId ? state.componentsById[state.selectedProductId] : null;
-  if (!comp) return '';
-  var code = state.docTypeCode || '';
-  return (comp.decimal_number || '') + code + (state.luSuffix ? LU_SUFFIX : '');
-}
-
-function onDocTypeChange() { onFormChange(); }
-
-function toggleLUSuffix() {
-  state.luSuffix = !state.luSuffix;
-  onFormChange();
-}
-
-function updateLUButtonState() {
-  var btn = document.getElementById('btnLU');
-  if (!btn) return;
-  btn.classList.toggle('active', state.luSuffix);
-}
-
-function onFormatChange() {
-  fFormatOtherRow.style.display = (fFormat.value === FORMAT_OTHER) ? '' : 'none';
-  onFormChange();
-}
-
-function currentFormat() {
-  return fFormat.value === FORMAT_OTHER ? fFormatOther.value.trim() : fFormat.value;
-}
-
-function onFormChange() { updateComputedFields(); }
 
 // ---------- BOM tree (bulk document generation) ----------
 
@@ -696,13 +568,13 @@ function collectDescendants(rootId) {
   return rows;
 }
 
-// Default checked doc-type codes per component role in the BOM hierarchy:
-// - the top-level assembly (the selected product itself, depth 0)
-// - a sub-assembly (has children)
-// - a bottom-level part (no children) — just "СП" (bare decimal number, no suffix)
+// Default checked doc-type columns (by label) per component role in the BOM
+// hierarchy. Узел сборки (has children, incl. the top-level product itself)
+// never gets "Д" — a part can't be something other components are nested
+// under; only a childless row is a "деталь".
 var DEFAULT_CODES_TOP = ['СП', 'СБ', 'ГЧ', 'ТУ', 'РЭ', 'Д1', 'ПС', 'ВЭ', 'Э4', 'Э5'];
 var DEFAULT_CODES_ASSEMBLY = ['СП', 'СБ', 'ВП'];
-var DEFAULT_CODES_LEAF = ['СП'];
+var DEFAULT_CODES_LEAF = ['Д'];
 
 function defaultCodesForRow(row) {
   if (row.depth === 0) return DEFAULT_CODES_TOP;
@@ -784,8 +656,8 @@ function renderTree() {
       td.className = 'tm-cb' + (i % 2 === 0 ? ' tm-shade' : '');
       var cb = document.createElement('input');
       cb.type = 'checkbox';
-      cb.checked = !!rowCells[dt.code];
-      cb.addEventListener('change', function () { rowCells[dt.code] = cb.checked; });
+      cb.checked = !!rowCells[dt.label];
+      cb.addEventListener('change', function () { rowCells[dt.label] = cb.checked; });
       td.appendChild(cb);
       tr.appendChild(td);
     });
@@ -811,8 +683,16 @@ function generateDocList() {
     if (!comp) return;
     var rowCells = state.cellChecked[row.id] || {};
     DOC_TYPES.forEach(function (dt) {
-      if (rowCells[dt.code]) {
-        pairs.push({ compId: row.id, code: dt.code, designation: (comp.decimal_number || '') + dt.code });
+      if (rowCells[dt.label]) {
+        pairs.push({
+          compId: row.id,
+          code: dt.code,
+          label: dt.label,
+          designation: (comp.decimal_number || '') + dt.code,
+          format: FORMATS[0],
+          formatOther: '',
+          sheets: 1
+        });
       }
     });
   });
@@ -827,6 +707,22 @@ function generateDocList() {
   renderGenList();
 }
 
+// Наименование в реестре: «<изделие верхнего уровня>.<узел/деталь>. <тип
+// документа>» — для конечной детали (skipNameSuffix) хвост с типом документа
+// не дописывается вовсе. Если отмеченная строка — само изделие верхнего
+// уровня, имя не дублируется («ГКВ-10.ГКВ-10» не нужно).
+function nameForItem(item) {
+  var topComp = state.componentsById[state.selectedProductId];
+  var topName = topComp ? topComp.name : '';
+  var nodeComp = state.componentsById[item.compId];
+  var nodeName = nodeComp ? nodeComp.name : '';
+  var base = (item.compId === state.selectedProductId || !topName) ? (nodeName || topName) : (topName + '.' + nodeName);
+  var dtEntry = DOC_TYPES.filter(function (d) { return d.label === item.label; })[0];
+  if (dtEntry && dtEntry.skipNameSuffix) return base;
+  var full = dtEntry ? fullNameForDocType(dtEntry.label) : '';
+  return full ? (base + '. ' + full) : base;
+}
+
 function renderGenList() {
   var el = document.getElementById('genList');
   if (!state.generatedList.length) {
@@ -835,16 +731,64 @@ function renderGenList() {
   }
   el.innerHTML = '';
   state.generatedList.forEach(function (item, idx) {
-    var row = document.createElement('div');
-    row.className = 'gen-item';
-    var span = document.createElement('span'); span.textContent = item.designation;
-    var btn = document.createElement('button'); btn.textContent = '×'; btn.title = 'Убрать';
-    btn.addEventListener('click', function () {
+    var card = document.createElement('div');
+    card.className = 'gen-card';
+
+    var top = document.createElement('div');
+    top.className = 'gen-card-top';
+    var dnSpan = document.createElement('span');
+    dnSpan.className = 'gen-card-designation'; dnSpan.textContent = item.designation;
+    var removeBtn = document.createElement('button');
+    removeBtn.className = 'gen-card-remove'; removeBtn.textContent = '×'; removeBtn.title = 'Убрать';
+    removeBtn.addEventListener('click', function () {
       state.generatedList.splice(idx, 1);
       renderGenList();
     });
-    row.appendChild(span); row.appendChild(btn);
-    el.appendChild(row);
+    top.appendChild(dnSpan); top.appendChild(removeBtn);
+    card.appendChild(top);
+
+    var nameDiv = document.createElement('div');
+    nameDiv.className = 'gen-card-name'; nameDiv.textContent = nameForItem(item);
+    card.appendChild(nameDiv);
+
+    var row = document.createElement('div');
+    row.className = 'gen-card-row';
+
+    var formatSel = buildFormatSelect();
+    formatSel.value = item.format;
+
+    var sheetsInput = document.createElement('input');
+    sheetsInput.type = 'number'; sheetsInput.min = '1'; sheetsInput.step = '1';
+    sheetsInput.className = 'form-input mono gen-card-sheets';
+    sheetsInput.value = item.sheets;
+    sheetsInput.addEventListener('input', function () {
+      item.sheets = parseInt(sheetsInput.value, 10) || 1;
+    });
+
+    var changeNumSpan = document.createElement('span');
+    changeNumSpan.className = 'gen-card-changenum';
+    var previewChangeNum = computeNextChangeNumber(item.designation);
+    changeNumSpan.textContent = '№' + (typeof previewChangeNum === 'number' ? previewChangeNum : '—');
+
+    row.appendChild(formatSel); row.appendChild(sheetsInput); row.appendChild(changeNumSpan);
+    card.appendChild(row);
+
+    var otherRow = document.createElement('div');
+    otherRow.className = 'gen-card-row';
+    otherRow.style.display = (item.format === FORMAT_OTHER) ? '' : 'none';
+    var otherInput = document.createElement('input');
+    otherInput.className = 'form-input'; otherInput.placeholder = 'напр. 3хА2';
+    otherInput.value = item.formatOther;
+    otherInput.addEventListener('input', function () { item.formatOther = otherInput.value; });
+    otherRow.appendChild(otherInput);
+    card.appendChild(otherRow);
+
+    formatSel.addEventListener('change', function () {
+      item.format = formatSel.value;
+      otherRow.style.display = (item.format === FORMAT_OTHER) ? '' : 'none';
+    });
+
+    el.appendChild(card);
   });
 }
 
@@ -853,6 +797,10 @@ function renderGenList() {
 // но Дата/Листов/Формат/Причина — общие для всей пачки. Инв. номер и
 // № изменения назначаются последовательно внутри пачки, чтобы не было
 // дублей при одном обращении к grist.selectedTable.create().
+// «Изделие» в реестре — всегда наименование выбранного изделия ВЕРХНЕГО
+// уровня (Product/ProductName = state.selectedProductId), даже когда
+// конкретный документ относится к вложенному узлу/детали — тот отражается
+// в Обозначении/Наименовании самой записи, а не в колонке «Изделие».
 function registerGeneratedDocs() {
   if (!state.recordsLoaded) return;
   if (!state.selectedProductId) { window.alert('Выберите изделие.'); return; }
@@ -860,68 +808,94 @@ function registerGeneratedDocs() {
   var dateVal = document.getElementById('fDate').value;
   var year = dateVal ? dateVal.slice(0, 4) : '';
   if (!year) { window.alert('Укажите дату.'); return; }
-  var format = currentFormat();
-  if (!format) { window.alert('Укажите формат документа.'); return; }
-  var sheets = parseInt(document.getElementById('fSheets').value, 10);
-  if (!sheets || sheets < 1) { window.alert('Укажите количество листов.'); return; }
+
+  for (var k = 0; k < state.generatedList.length; k++) {
+    var it = state.generatedList[k];
+    var fmt = it.format === FORMAT_OTHER ? it.formatOther.trim() : it.format;
+    if (!fmt) { window.alert('Укажите формат для документа ' + it.designation + '.'); return; }
+    if (!it.sheets || it.sheets < 1) { window.alert('Укажите количество листов для документа ' + it.designation + '.'); return; }
+  }
+
   var reason = document.getElementById('fNote').value.trim();
-
+  var topComp = state.componentsById[state.selectedProductId];
   var yy = String(year).slice(-2);
-  var re = new RegExp('^' + yy + '-(\\d{5})$');
-  var maxInv = 0;
-  state.records.forEach(function (r) {
-    var m = re.exec(String(r.InventoryNumber || ''));
-    if (m) { var n = parseInt(m[1], 10); if (n > maxInv) maxInv = n; }
-  });
-
-  var recordsToCreate = state.generatedList.map(function (item) {
-    maxInv += 1;
-    var padded = String(maxInv);
-    while (padded.length < 5) padded = '0' + padded;
-    var invNumber = yy + '-' + padded;
-
-    var changeNumber = computeNextChangeNumber(item.designation);
-    bumpChangeNumberFloor(item.designation, changeNumber);
-
-    var comp = state.componentsById[item.compId];
-    var name = (comp && comp.name ? comp.name + '. ' + fullNameForDocType(item.code) : '').trim();
-    var fileName = item.designation.replace(/\s+/g, '') + '_изм' + pad2(changeNumber) + '.pdf';
-
-    return {
-      fields: {
-        InventoryNumber: invNumber,
-        IssueDate: inputValueToDate(dateVal),
-        Product: item.compId,
-        ProductName: comp ? comp.name : '',
-        DocumentDesignation: item.designation,
-        DocTypeCode: item.code,
-        Sheets: sheets,
-        Format: format,
-        Name: name,
-        FileName: fileName,
-        ChangeNumber: changeNumber,
-        Note: reason
-      }
-    };
-  });
 
   var btn = document.getElementById('btnRegisterBatch');
   btn.disabled = true;
-  grist.selectedTable.create(recordsToCreate).then(function (result) {
-    var results = Array.isArray(result) ? result : [result];
-    results.forEach(function (res, i) {
-      state.records.push(Object.assign({ id: res.id }, recordsToCreate[i].fields));
+
+  // Пересчитываем максимальный инв.номер и «пол» № изменения по свежим
+  // данным с сервера прямо перед записью (а не по локальному кэшу
+  // state.records/state.changeNumberFloor, который мог устареть с момента
+  // последней загрузки формы) — так два человека, открывшие виджет заранее
+  // и почти одновременно нажавшие «Зарегистрировать», не получат один и тот
+  // же инв. номер: каждый берёт максимум по факту непосредственно перед
+  // своей записью.
+  grist.docApi.fetchSelectedTable().then(function (table) {
+    var ids = table.id || [];
+    var invNumbers = table.InventoryNumber || [];
+    var designations = table.DocumentDesignation || [];
+    var changeNumbers = table.ChangeNumber || [];
+
+    var re = new RegExp('^' + yy + '-(\\d{5})$');
+    var maxInv = 0;
+    invNumbers.forEach(function (v) {
+      var m = re.exec(String(v || ''));
+      if (m) { var n = parseInt(m[1], 10); if (n > maxInv) maxInv = n; }
     });
-    state.generatedList = [];
-    rebuildTreeForSelectedProduct();
-    renderGenList();
-    document.getElementById('fSheets').value = '1';
-    fFormat.value = FORMATS[0];
-    fFormatOtherRow.style.display = 'none';
-    fFormatOther.value = '';
-    document.getElementById('fNote').value = '';
-    updateComputedFields();
-    btn.disabled = false;
+
+    var freshFloor = {};
+    ids.forEach(function (id, i) {
+      var n = parseInt(String(changeNumbers[i] || '0').replace(/[^0-9]/g, ''), 10);
+      var key = String(designations[i]);
+      if (!(key in freshFloor) || n > freshFloor[key]) freshFloor[key] = n;
+      bumpChangeNumberFloor(designations[i], n);
+    });
+
+    var recordsToCreate = state.generatedList.map(function (item) {
+      maxInv += 1;
+      var padded = String(maxInv);
+      while (padded.length < 5) padded = '0' + padded;
+      var invNumber = yy + '-' + padded;
+
+      var key = String(item.designation);
+      var changeNumber = (key in freshFloor) ? freshFloor[key] + 1 : 0;
+      freshFloor[key] = changeNumber;
+      bumpChangeNumberFloor(item.designation, changeNumber);
+
+      var format = item.format === FORMAT_OTHER ? item.formatOther.trim() : item.format;
+      var name = nameForItem(item);
+      var fileName = item.designation.replace(/\s+/g, '') + '_изм' + pad2(changeNumber) + '.pdf';
+
+      return {
+        fields: {
+          InventoryNumber: invNumber,
+          IssueDate: inputValueToDate(dateVal),
+          Product: state.selectedProductId,
+          ProductName: topComp ? topComp.name : '',
+          DocumentDesignation: item.designation,
+          DocTypeCode: item.label,
+          Sheets: item.sheets,
+          Format: format,
+          Name: name,
+          FileName: fileName,
+          ChangeNumber: changeNumber,
+          Note: reason
+        }
+      };
+    });
+
+    return grist.selectedTable.create(recordsToCreate).then(function (result) {
+      var results = Array.isArray(result) ? result : [result];
+      results.forEach(function (res, i) {
+        state.records.push(Object.assign({ id: res.id }, recordsToCreate[i].fields));
+      });
+      state.generatedList = [];
+      rebuildTreeForSelectedProduct();
+      renderGenList();
+      document.getElementById('fNote').value = '';
+      resetForm();
+      btn.disabled = false;
+    });
   }).catch(function (err) {
     showError(err);
     btn.disabled = false;
@@ -977,27 +951,11 @@ function computeNextChangeNumber(designation) {
 function updateComputedFields() {
   var comp = state.selectedProductId ? state.componentsById[state.selectedProductId] : null;
   document.getElementById('fProductName').value = comp ? comp.name : '—';
-  updateLUButtonState();
   updateBomPanelVisibility();
-  if (!comp) return;
-
-  var designation = computeDesignation();
 
   var dateVal = document.getElementById('fDate').value;
   var year = dateVal ? dateVal.slice(0, 4) : '';
-  document.getElementById('fInvNumber').value = year ? computeNextInventoryNumber(year) : '—';
-
-  var changeNumber = designation ? computeNextChangeNumber(designation) : '—';
-  document.getElementById('fChangeNumber').value = changeNumber;
-
-  var docTypeCode = state.docTypeCode || '';
-  document.getElementById('fName').value = comp.name ? (comp.name + '. ' + fullNameForDocType(docTypeCode)).trim() : '—';
-
-  if (designation && typeof changeNumber === 'number') {
-    document.getElementById('fFileName').value = designation.replace(/\s+/g, '') + '_изм' + pad2(changeNumber) + '.pdf';
-  } else {
-    document.getElementById('fFileName').value = '—';
-  }
+  document.getElementById('fInvNumber').value = (comp && year) ? computeNextInventoryNumber(year) : '—';
 }
 
 // ---------- Register ----------
@@ -1007,66 +965,9 @@ function updateComputedFields() {
 // поиск/выбор каждый раз был бы лишним трением.
 function resetForm() {
   document.getElementById('fDate').value = dateToInputValue(Math.floor(Date.now() / 1000));
-  state.luSuffix = false;
-  document.getElementById('fSheets').value = '1';
-  fFormat.value = FORMATS[0];
-  fFormatOtherRow.style.display = 'none';
-  fFormatOther.value = '';
-  document.getElementById('fNote').value = '';
   updateComputedFields();
 }
-populateSelects();
 resetForm();
-
-function registerDocument() {
-  if (!state.recordsLoaded) return;
-  if (!state.selectedProductId) { window.alert('Выберите изделие.'); return; }
-  var comp = state.componentsById[state.selectedProductId];
-  var dateVal = document.getElementById('fDate').value;
-  var year = dateVal ? dateVal.slice(0, 4) : '';
-  if (!year) { window.alert('Укажите дату.'); return; }
-  var designation = computeDesignation();
-  if (!designation) { window.alert('Укажите обозначение документа.'); return; }
-  var format = currentFormat();
-  if (!format) { window.alert('Укажите формат документа.'); return; }
-  var sheets = parseInt(document.getElementById('fSheets').value, 10);
-  if (!sheets || sheets < 1) { window.alert('Укажите количество листов.'); return; }
-
-  var docTypeCode = state.docTypeCode || '';
-  var changeNumber = computeNextChangeNumber(designation);
-  var name = (comp.name ? comp.name + '. ' + fullNameForDocType(docTypeCode) : '').trim();
-  var fileName = designation.replace(/\s+/g, '') + '_изм' + pad2(changeNumber) + '.pdf';
-
-  var fields = {
-    InventoryNumber: computeNextInventoryNumber(year),
-    IssueDate: inputValueToDate(dateVal),
-    Product: state.selectedProductId,
-    ProductName: comp ? comp.name : '',
-    DocumentDesignation: designation,
-    DocTypeCode: docTypeCode,
-    Sheets: sheets,
-    Format: format,
-    Name: name,
-    FileName: fileName,
-    ChangeNumber: changeNumber,
-    Note: document.getElementById('fNote').value.trim()
-  };
-  // claim the ChangeNumber immediately, before the async write even starts —
-  // computeNextChangeNumber() must never hand out this value again, regardless
-  // of what onRecords delivers in the meantime
-  bumpChangeNumberFloor(fields.DocumentDesignation, fields.ChangeNumber);
-  var btn = document.getElementById('btnRegister');
-  btn.disabled = true;
-  grist.selectedTable.create({ fields: fields }).then(function (result) {
-    var newId = (result && typeof result.id !== 'undefined') ? result.id : (Array.isArray(result) ? result[0].id : undefined);
-    state.records.push(Object.assign({ id: newId }, fields));
-    resetForm();
-    btn.disabled = false;
-  }).catch(function (err) {
-    showError(err);
-    btn.disabled = false;
-  });
-}
 
 // ---------- Registry table (list + inline edit + delete) ----------
 
@@ -1281,7 +1182,6 @@ document.getElementById('settingsSave').addEventListener('click', function () {
   grist.setOption('docTypeNames', newOptions.docTypeNames);
   state.options = newOptions;
   loadComponents();
-  populateSelects();
   updateComputedFields();
   closeSettings();
 });
