@@ -145,7 +145,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .gen-card-format-other{width:60px;display:none}
 .gen-card-format-other.on{display:block}
 .gen-card-box-change{background:var(--grn-bg);border-color:var(--grn-brd)}
-.gen-card-changenum-value{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--tx);white-space:nowrap}
+.gen-card-changenum-value{font-family:var(--mono);font-size:11px;font-weight:400;color:var(--tx);white-space:nowrap}
 .gen-card-remove{border:none;background:transparent;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:0 2px;flex-shrink:0}
 
 /* Settings slide-over */
@@ -258,7 +258,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.5.5</footer>
+<footer class="ver-footer">v0.5.6</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -452,13 +452,30 @@ function estdComponentsTableCandidates() {
   return ESTD_TABLE_CANDIDATES;
 }
 
+// Grist table ids are case-sensitive, and users often type/configure them
+// with different capitalization than the real id (e.g. "Estd_components"
+// vs the actual "ESTD_Components"). If the doc API exposes a table listing,
+// resolve each candidate to the real id case-insensitively; otherwise fall
+// back to trying the candidates verbatim.
+function listTablesSafe() {
+  if (!grist.docApi || typeof grist.docApi.listTables !== 'function') return Promise.resolve(null);
+  return grist.docApi.listTables().catch(function () { return null; });
+}
+
 // Tries each candidate table name in turn; resolves to the first table found,
 // or null if none of the candidates exist (used for the optional ESPD/ESTD
 // sources, which may simply not be present in a given document).
-function fetchTableByCandidates(candidates) {
+function fetchTableByCandidates(candidates, allTables) {
+  function resolveId(wanted) {
+    if (!allTables) return wanted;
+    var match = allTables.filter(function (t) { return String(t).toLowerCase() === wanted.toLowerCase(); })[0];
+    return match || null;
+  }
   function tryNext(i) {
     if (i >= candidates.length) return Promise.resolve(null);
-    return grist.docApi.fetchTable(candidates[i]).catch(function () { return tryNext(i + 1); });
+    var actualId = resolveId(candidates[i]);
+    if (!actualId) return tryNext(i + 1);
+    return grist.docApi.fetchTable(actualId).catch(function () { return tryNext(i + 1); });
   }
   return tryNext(0);
 }
@@ -466,11 +483,13 @@ function fetchTableByCandidates(candidates) {
 function loadComponents() {
   state.componentsLoaded = false;
 
-  Promise.all([
-    fetchTableByCandidates(componentsTableCandidates()),
-    fetchTableByCandidates(espdComponentsTableCandidates()),
-    fetchTableByCandidates(estdComponentsTableCandidates())
-  ]).then(function (tables) {
+  listTablesSafe().then(function (allTables) {
+    return Promise.all([
+      fetchTableByCandidates(componentsTableCandidates(), allTables),
+      fetchTableByCandidates(espdComponentsTableCandidates(), allTables),
+      fetchTableByCandidates(estdComponentsTableCandidates(), allTables)
+    ]);
+  }).then(function (tables) {
     var mainTable = tables[0], espdTable = tables[1], estdTable = tables[2];
     if (!mainTable) {
       console.error('Не удалось найти таблицу номенклатуры среди: ' + componentsTableCandidates().join(', '));
