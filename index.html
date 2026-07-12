@@ -122,7 +122,6 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .tree-matrix thead th{position:sticky;top:0;background:var(--surf);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--tx2);border-bottom:2px solid var(--brd);z-index:1}
 .tree-matrix th.tm-name,.tree-matrix td.tm-name{text-align:left;white-space:nowrap;position:sticky;left:0;background:var(--surf);z-index:2;min-width:260px}
 .tree-matrix thead th.tm-name{z-index:3}
-.tree-matrix th.tm-shade,.tree-matrix td.tm-shade{background:#d9d9d9}
 .tree-matrix tbody tr:hover td{background:var(--acc-bg)}
 .tree-matrix tbody tr:last-child td{border-bottom:none}
 .tree-dn{font-family:var(--mono);font-size:12px;color:var(--acc)}
@@ -273,7 +272,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.6.0</footer>
+<footer class="ver-footer">v0.7.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -321,10 +320,10 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 // дописывается (см. nameForItem()).
 var DOC_TYPES = [
   { code: '', label: 'Д', fullName: 'Чертёж детали', skipNameSuffix: true },
+  { code: 'ЛУ', label: 'ЛУ', fullName: 'Лист утверждения' },
   { code: '', label: 'СП', fullName: 'Спецификация' },
   { code: 'СБ', label: 'СБ', fullName: 'Сборочный чертёж' },
   { code: 'ГЧ', label: 'ГЧ', fullName: 'Габаритный чертёж' },
-  { code: 'ЛУ', label: 'ЛУ', fullName: 'Лист утверждения' },
   { code: 'ТУ', label: 'ТУ', fullName: 'Технические условия' },
   { code: 'РЭ', label: 'РЭ', fullName: 'Руководство по эксплуатации' },
   { code: 'Д1', label: 'Д1', fullName: 'Ведомость документов' },
@@ -831,7 +830,7 @@ function renderTree() {
   columns[0].push(thName);
   DOC_TYPES.forEach(function (dt, i) {
     var th = document.createElement('th');
-    th.className = 'tm-cb' + (i % 2 === 0 ? ' tm-shade' : '');
+    th.className = 'tm-cb';
     th.textContent = dt.label;
     headRow.appendChild(th);
     columns[i + 1].push(th);
@@ -862,7 +861,7 @@ function renderTree() {
 
     DOC_TYPES.forEach(function (dt, i) {
       var td = document.createElement('td');
-      td.className = 'tm-cb' + (i % 2 === 0 ? ' tm-shade' : '');
+      td.className = 'tm-cb';
       var cell = document.createElement('span');
       cell.className = 'tm-cell';
       var cb = document.createElement('input');
@@ -870,16 +869,18 @@ function renderTree() {
       cb.checked = !!rowCells[dt.label];
       cb.addEventListener('change', function () { rowCells[dt.label] = cb.checked; });
       cell.appendChild(cb);
-      var luBtn = document.createElement('button');
-      luBtn.type = 'button';
-      luBtn.className = 'tm-lu-btn' + (rowLU[dt.label] ? ' on' : '');
-      luBtn.textContent = 'ЛУ';
-      luBtn.title = 'Добавить лист утверждения к этому документу';
-      luBtn.addEventListener('click', function () {
-        rowLU[dt.label] = !rowLU[dt.label];
-        luBtn.classList.toggle('on', !!rowLU[dt.label]);
-      });
-      cell.appendChild(luBtn);
+      if (dt.label !== 'Д' && dt.label !== 'СП') {
+        var luBtn = document.createElement('button');
+        luBtn.type = 'button';
+        luBtn.className = 'tm-lu-btn' + (rowLU[dt.label] ? ' on' : '');
+        luBtn.textContent = 'ЛУ';
+        luBtn.title = 'Добавить лист утверждения к этому документу';
+        luBtn.addEventListener('click', function () {
+          rowLU[dt.label] = !rowLU[dt.label];
+          luBtn.classList.toggle('on', !!rowLU[dt.label]);
+        });
+        cell.appendChild(luBtn);
+      }
       td.appendChild(cell);
       tr.appendChild(td);
       columns[i + 1].push(td);
@@ -889,7 +890,10 @@ function renderTree() {
   });
   table.appendChild(tbody);
 
-  columns.forEach(function (cells) {
+  // Столбец "Состав изделия" (columns[0]) подсвечивается только по строке
+  // (см. tr:hover в CSS) — подсветка всего столбца целиком для него не нужна,
+  // он и так один на всю ширину. Остальные столбцы подсвечиваются целиком.
+  columns.slice(1).forEach(function (cells) {
     cells.forEach(function (cell) {
       cell.addEventListener('mouseenter', function () {
         cells.forEach(function (c) { c.classList.add('tm-col-hover'); });
