@@ -111,10 +111,10 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .tree-layout{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}
 .tree-layout.standalone .tree-col,.tree-layout.standalone .gen-transfer{display:none}
 .tree-layout.standalone .gen-col{flex:0 1 820px;max-width:820px;margin-left:auto}
-.tree-layout.gen-expanded .tree-col{display:none}
+.tree-layout.gen-expanded .tree-col{flex-basis:0;max-width:0;min-width:0;opacity:0;border-color:transparent;overflow:hidden;pointer-events:none}
 .tree-layout.gen-expanded .gen-col{flex:1 1 auto;max-width:none;min-width:0;margin-left:0}
-.tree-layout.gen-collapsed .gen-col{display:none}
-.tree-col{flex:1 1 340px;min-width:340px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);max-height:360px;overflow:auto}
+.tree-layout.gen-collapsed .gen-col{flex-basis:0;max-width:0;min-width:0;opacity:0;border-color:transparent;overflow:hidden;pointer-events:none}
+.tree-col{flex:1 1 340px;min-width:340px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);max-height:360px;overflow:auto;transition:flex-basis .18s ease,max-width .18s ease,min-width .18s ease,opacity .16s ease,border-color .18s ease}
 .tree-empty{padding:16px;text-align:center;color:var(--tx3);font-size:12px}
 
 .tree-matrix{border-collapse:collapse;font-size:12px;white-space:nowrap}
@@ -123,11 +123,16 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .tree-matrix th.tm-name,.tree-matrix td.tm-name{text-align:left;white-space:nowrap;position:sticky;left:0;background:var(--surf);z-index:2;min-width:260px}
 .tree-matrix thead th.tm-name{z-index:3}
 .tree-matrix th.tm-shade,.tree-matrix td.tm-shade{background:#d9d9d9}
-.tree-matrix tbody tr:hover td:not(.tm-name){background:var(--acc-bg)}
+.tree-matrix tbody tr:hover td{background:var(--acc-bg)}
 .tree-matrix tbody tr:last-child td{border-bottom:none}
 .tree-dn{font-family:var(--mono);font-size:12px;color:var(--acc)}
 .tree-name{font-size:12px;color:var(--tx2)}
 .tree-matrix td.tm-cb input{width:14px;height:14px;cursor:pointer;accent-color:var(--acc)}
+.tm-cell{display:inline-flex;align-items:center;justify-content:center;gap:3px}
+.tm-lu-btn{width:14px;height:14px;padding:0;border:1px solid var(--brd);border-radius:2px;background:var(--surf);color:var(--tx3);font-size:8px;font-weight:700;line-height:12px;letter-spacing:-.03em;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tm-lu-btn:hover{border-color:var(--acc)}
+.tm-lu-btn.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.tree-matrix tbody td.tm-col-hover,.tree-matrix thead th.tm-col-hover{background:var(--acc-bg)}
 
 .gen-transfer{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;align-self:stretch;margin-left:auto}
 .gen-transfer .icon-btn{flex-shrink:0}
@@ -137,7 +142,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .btn-collapse-gen{width:30px;height:60px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:none;border-radius:var(--r);background:var(--surf3);color:var(--tx2);cursor:pointer;transition:all .12s}
 .btn-collapse-gen:hover{background:var(--acc-bg);color:var(--acc)}
 
-.gen-col{border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);display:flex;flex-direction:column;max-height:360px}
+.gen-col{border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);display:flex;flex-direction:column;max-height:360px;transition:flex-basis .18s ease,flex-grow .18s ease,max-width .18s ease,min-width .18s ease,margin-left .18s ease,opacity .16s ease,border-color .18s ease}
 .gen-list{overflow-y:auto;flex:1}
 .gen-empty{padding:14px;text-align:center;color:var(--tx3);font-size:11px}
 .gen-card{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:6px 8px;border-bottom:1px solid var(--brd)}
@@ -268,7 +273,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.5.23</footer>
+<footer class="ver-footer">v0.6.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -366,6 +371,7 @@ var state = {
   childrenByParent: {}, // parentId -> [id,...], for the BOM tree
   treeRows: [],          // [{id, depth}] flattened BOM of the selected product
   cellChecked: {},       // componentId -> { docTypeLabel -> true }
+  cellLU: {},            // componentId -> { docTypeLabel -> true } — companion "-ЛУ" toggle per cell
   generatedList: [],     // [{compId, code, label, designation, format, formatOther, sheets}, ...] queued for bulk registration
   genExpanded: false      // true = состав изделия свёрнут, формируемый список развёрнут почти на всю панель
 };
@@ -696,6 +702,7 @@ function selectProduct(id) {
   if (topComp && topComp.source !== 'cmp') {
     state.treeRows = [];
     state.cellChecked = {};
+    state.cellLU = {};
     renderTree();
     state.generatedList = [{
       compId: state.selectedProductId,
@@ -766,12 +773,14 @@ function rebuildTreeForSelectedProduct() {
   if (!state.selectedProductId || !state.componentsLoaded) {
     state.treeRows = [];
     state.cellChecked = {};
+    state.cellLU = {};
     renderTree();
     return;
   }
   state.treeRows = collectDescendants(state.selectedProductId);
   var cells = {};
-  state.treeRows.forEach(function (row) { cells[row.id] = {}; });
+  var luCells = {};
+  state.treeRows.forEach(function (row) { cells[row.id] = {}; luCells[row.id] = {}; });
   var targetId = (state.searchedComponentId != null) ? state.searchedComponentId : state.selectedProductId;
   var subtreeIds = {};
   collectDescendants(targetId).forEach(function (r) { subtreeIds[r.id] = true; });
@@ -782,12 +791,16 @@ function rebuildTreeForSelectedProduct() {
     cells[row.id] = rowCells;
   });
   state.cellChecked = cells;
+  state.cellLU = luCells;
   renderTree();
 }
 
 function clearAllChecks() {
   Object.keys(state.cellChecked).forEach(function (id) {
     state.cellChecked[id] = {};
+  });
+  Object.keys(state.cellLU).forEach(function (id) {
+    state.cellLU[id] = {};
   });
   renderTree();
 }
@@ -804,16 +817,24 @@ function renderTree() {
   var table = document.createElement('table');
   table.className = 'tree-matrix';
 
+  // columns[0] = карточка "Состав изделия", columns[i+1] = столбец DOC_TYPES[i] —
+  // собирается по ходу построения таблицы, чтобы навесить наведение "весь столбец"
+  // на th и td одного и того же индекса без повторного обхода строк.
+  var columns = [[]];
+  DOC_TYPES.forEach(function () { columns.push([]); });
+
   var thead = document.createElement('thead');
   var headRow = document.createElement('tr');
   var thName = document.createElement('th');
   thName.className = 'tm-name'; thName.textContent = 'Состав изделия';
   headRow.appendChild(thName);
+  columns[0].push(thName);
   DOC_TYPES.forEach(function (dt, i) {
     var th = document.createElement('th');
     th.className = 'tm-cb' + (i % 2 === 0 ? ' tm-shade' : '');
     th.textContent = dt.label;
     headRow.appendChild(th);
+    columns[i + 1].push(th);
   });
   thead.appendChild(headRow);
   table.appendChild(thead);
@@ -823,7 +844,9 @@ function renderTree() {
     var comp = state.componentsById[row.id];
     if (!comp) return;
     if (!state.cellChecked[row.id]) state.cellChecked[row.id] = {};
+    if (!state.cellLU[row.id]) state.cellLU[row.id] = {};
     var rowCells = state.cellChecked[row.id];
+    var rowLU = state.cellLU[row.id];
 
     var tr = document.createElement('tr');
     var tdName = document.createElement('td');
@@ -835,21 +858,47 @@ function renderTree() {
     nm.className = 'tree-name'; nm.textContent = ' ' + (comp.name || '');
     tdName.appendChild(dn); tdName.appendChild(nm);
     tr.appendChild(tdName);
+    columns[0].push(tdName);
 
     DOC_TYPES.forEach(function (dt, i) {
       var td = document.createElement('td');
       td.className = 'tm-cb' + (i % 2 === 0 ? ' tm-shade' : '');
+      var cell = document.createElement('span');
+      cell.className = 'tm-cell';
       var cb = document.createElement('input');
       cb.type = 'checkbox';
       cb.checked = !!rowCells[dt.label];
       cb.addEventListener('change', function () { rowCells[dt.label] = cb.checked; });
-      td.appendChild(cb);
+      cell.appendChild(cb);
+      var luBtn = document.createElement('button');
+      luBtn.type = 'button';
+      luBtn.className = 'tm-lu-btn' + (rowLU[dt.label] ? ' on' : '');
+      luBtn.textContent = 'ЛУ';
+      luBtn.title = 'Добавить лист утверждения к этому документу';
+      luBtn.addEventListener('click', function () {
+        rowLU[dt.label] = !rowLU[dt.label];
+        luBtn.classList.toggle('on', !!rowLU[dt.label]);
+      });
+      cell.appendChild(luBtn);
+      td.appendChild(cell);
       tr.appendChild(td);
+      columns[i + 1].push(td);
     });
 
     tbody.appendChild(tr);
   });
   table.appendChild(tbody);
+
+  columns.forEach(function (cells) {
+    cells.forEach(function (cell) {
+      cell.addEventListener('mouseenter', function () {
+        cells.forEach(function (c) { c.classList.add('tm-col-hover'); });
+      });
+      cell.addEventListener('mouseleave', function () {
+        cells.forEach(function (c) { c.classList.remove('tm-col-hover'); });
+      });
+    });
+  });
 
   body.innerHTML = '';
   body.appendChild(table);
@@ -876,10 +925,12 @@ function collapseGenExpanded() {
 
 function generateDocList() {
   var pairs = [];
+  var luType = DOC_TYPES.filter(function (d) { return d.label === 'ЛУ'; })[0];
   state.treeRows.forEach(function (row) {
     var comp = state.componentsById[row.id];
     if (!comp) return;
     var rowCells = state.cellChecked[row.id] || {};
+    var rowLU = state.cellLU[row.id] || {};
     DOC_TYPES.forEach(function (dt) {
       if (rowCells[dt.label]) {
         pairs.push({
@@ -887,6 +938,20 @@ function generateDocList() {
           code: dt.code,
           label: dt.label,
           designation: (comp.decimal_number || '') + (dt.label === 'ЛУ' ? '-' : '') + dt.code,
+          format: FORMATS[0],
+          formatOther: '',
+          sheets: 1
+        });
+      }
+      // Отдельная кнопка «ЛУ» в ячейке — лист утверждения к КОНКРЕТНОМУ
+      // документу этого типа, независимо от того, отмечен ли сам чекбокс
+      // (документ мог быть зарегистрирован ранее).
+      if (rowLU[dt.label] && luType) {
+        pairs.push({
+          compId: row.id,
+          code: luType.code,
+          label: luType.label,
+          designation: (comp.decimal_number || '') + dt.code + '-' + luType.code,
           format: FORMATS[0],
           formatOther: '',
           sheets: 1
