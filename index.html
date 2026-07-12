@@ -143,7 +143,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
     <div class="pb">
 
       <div id="docFieldsWrap">
-        <div class="form-row" style="grid-template-columns:130px 120px 1fr 1.4fr 110px 50px 70px 120px 110px">
+        <div class="form-row" style="grid-template-columns:130px 120px 1fr 50px 1.4fr 110px 50px 70px 120px 110px">
           <div class="form-group">
             <label class="form-label">Инв. номер</label>
             <input class="form-input formed-num" id="fInvNumber" readonly value="—">
@@ -155,6 +155,12 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
           <div class="form-group">
             <label class="form-label">Наименование изделия</label>
             <input class="form-input" id="fProductName" readonly value="—">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Фикс.</label>
+            <button type="button" class="btn-suffix" id="btnKeepProduct" title="Оставить изделие выбранным после регистрации документа" onclick="toggleKeepProduct()" style="width:100%;display:flex;align-items:center;justify-content:center">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>
+            </button>
           </div>
           <div class="form-group">
             <label class="form-label">Изделие</label>
@@ -243,7 +249,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.3.2</footer>
+<footer class="ver-footer">v0.3.3</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -316,7 +322,8 @@ var state = {
 
   selectedProductId: null,
   luSuffix: false, // true when the "-ЛУ" suffix should be appended to the computed designation
-  docTypeCode: null // selected DOC_TYPES code, null until populateSelects() picks a default
+  docTypeCode: null, // selected DOC_TYPES code, null until populateSelects() picks a default
+  keepProduct: false // true = resetForm() keeps the selected product after registration
 };
 
 function setConn(ok, label) {
@@ -589,6 +596,17 @@ function updateLUButtonState() {
   btn.classList.toggle('active', state.luSuffix);
 }
 
+function toggleKeepProduct() {
+  state.keepProduct = !state.keepProduct;
+  updateKeepProductButtonState();
+}
+
+function updateKeepProductButtonState() {
+  var btn = document.getElementById('btnKeepProduct');
+  if (!btn) return;
+  btn.classList.toggle('active', state.keepProduct);
+}
+
 function onFormatChange() {
   fFormatOtherRow.style.display = (fFormat.value === FORMAT_OTHER) ? '' : 'none';
   onFormChange();
@@ -675,8 +693,10 @@ function updateComputedFields() {
 
 function resetForm() {
   document.getElementById('fDate').value = dateToInputValue(Math.floor(Date.now() / 1000));
-  fProductInput.value = '';
-  state.selectedProductId = null;
+  if (!state.keepProduct) {
+    fProductInput.value = '';
+    state.selectedProductId = null;
+  }
   state.luSuffix = false;
   document.getElementById('fSheets').value = '1';
   fFormat.value = FORMATS[0];
@@ -687,6 +707,7 @@ function resetForm() {
 }
 populateSelects();
 resetForm();
+updateKeepProductButtonState();
 
 function registerDocument() {
   if (!state.recordsLoaded) return;
