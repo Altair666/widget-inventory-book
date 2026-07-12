@@ -258,7 +258,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.5.6</footer>
+<footer class="ver-footer">v0.5.7</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -472,12 +472,36 @@ function fetchTableByCandidates(candidates, allTables) {
     return match || null;
   }
   function tryNext(i) {
-    if (i >= candidates.length) return Promise.resolve(null);
+    if (i >= candidates.length) {
+      console.warn('[inventory-book] таблица не найдена среди кандидатов:', candidates, allTables ? '(доступные таблицы: ' + allTables.join(', ') + ')' : '(список таблиц недоступен)');
+      return Promise.resolve(null);
+    }
     var actualId = resolveId(candidates[i]);
     if (!actualId) return tryNext(i + 1);
-    return grist.docApi.fetchTable(actualId).catch(function () { return tryNext(i + 1); });
+    return grist.docApi.fetchTable(actualId).then(function (table) {
+      console.log('[inventory-book] загружена таблица "' + actualId + '", колонки:', Object.keys(table));
+      return table;
+    }).catch(function (err) {
+      console.warn('[inventory-book] ошибка загрузки таблицы "' + actualId + '":', err);
+      return tryNext(i + 1);
+    });
   }
   return tryNext(0);
+}
+
+// Grist column ids can also differ in case from what we expect (e.g. a
+// column literally named "Name" or "Decimal_number") — resolve field access
+// case-insensitively against the table's actual columns, once per table.
+function makeColGetter(table) {
+  var cache = {};
+  return function (key) {
+    if (!(key in cache)) {
+      var lower = key.toLowerCase();
+      var actualKey = Object.keys(table).filter(function (k) { return k.toLowerCase() === lower; })[0];
+      cache[key] = actualKey ? table[actualKey] : null;
+    }
+    return cache[key];
+  };
 }
 
 function loadComponents() {
@@ -499,17 +523,20 @@ function loadComponents() {
     var byParent = {};
 
     if (mainTable) {
+      var mainCol = makeColGetter(mainTable);
+      var mName = mainCol('name'), mPrimary = mainCol('primary_use'), mDn = mainCol('decimal_number'),
+          mOrg = mainCol('org_prefix'), mSerial = mainCol('serial');
       var ids = mainTable.id || [];
       ids.forEach(function (id, i2) {
         var comp = {
           id: id,
           rawId: id,
           source: 'cmp',
-          name: mainTable.name ? mainTable.name[i2] : '',
-          primary_use: mainTable.primary_use ? mainTable.primary_use[i2] : 0,
-          decimal_number: mainTable.decimal_number ? mainTable.decimal_number[i2] : '',
-          org_prefix: mainTable.org_prefix ? mainTable.org_prefix[i2] : '',
-          serial: mainTable.serial ? mainTable.serial[i2] : ''
+          name: mName ? mName[i2] : '',
+          primary_use: mPrimary ? mPrimary[i2] : 0,
+          decimal_number: mDn ? mDn[i2] : '',
+          org_prefix: mOrg ? mOrg[i2] : '',
+          serial: mSerial ? mSerial[i2] : ''
         };
         byId[id] = comp;
         var parent = comp.primary_use || 0;
@@ -524,6 +551,8 @@ function loadComponents() {
     // and are never added to childrenByParent so they don't join any tree).
     function addStandalone(table, prefix, source) {
       if (!table) return;
+      var col = makeColGetter(table);
+      var tName = col('name'), tDn = col('decimal_number'), tOrg = col('org_prefix'), tSerial = col('serial');
       var ids = table.id || [];
       ids.forEach(function (id, i2) {
         var nsId = prefix + id;
@@ -531,11 +560,11 @@ function loadComponents() {
           id: nsId,
           rawId: id,
           source: source,
-          name: table.name ? table.name[i2] : '',
+          name: tName ? tName[i2] : '',
           primary_use: 0,
-          decimal_number: table.decimal_number ? table.decimal_number[i2] : '',
-          org_prefix: table.org_prefix ? table.org_prefix[i2] : '',
-          serial: table.serial ? table.serial[i2] : ''
+          decimal_number: tDn ? tDn[i2] : '',
+          org_prefix: tOrg ? tOrg[i2] : '',
+          serial: tSerial ? tSerial[i2] : ''
         };
       });
     }
@@ -551,6 +580,9 @@ function loadComponents() {
     state.componentsById = byId;
     state.childrenByParent = byParent;
     state.componentsLoaded = true;
+    var counts = { cmp: 0, esp: 0, est: 0 };
+    Object.keys(byId).forEach(function (k) { counts[byId[k].source] = (counts[byId[k].source] || 0) + 1; });
+    console.log('[inventory-book] номенклатура загружена:', counts);
     rebuildTreeForSelectedProduct();
     updateComputedFields();
   });
