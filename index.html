@@ -82,10 +82,14 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .reg-table td{padding:6px 8px;border-bottom:1px solid var(--brd);vertical-align:top;text-align:center}
 .reg-table tr:last-child td{border-bottom:none}
 .reg-table tr:hover td{background:var(--surf2)}
-.reg-dn{font-family:var(--mono);font-size:11px;color:var(--acc);white-space:nowrap}
+.reg-dn{font-family:var(--mono);font-size:11px;color:var(--acc);white-space:nowrap;width:62px}
 .reg-mono{font-family:var(--mono);font-size:11px;white-space:nowrap}
+.reg-date{width:62px;white-space:nowrap}
+.reg-chg{width:40px;white-space:nowrap}
+.reg-sheets{width:40px;white-space:nowrap}
+.reg-format{width:52px;white-space:nowrap}
 .reg-name{text-align:left;white-space:normal;max-width:200px;word-break:break-word;overflow-wrap:anywhere}
-.reg-reason{text-align:left;white-space:pre-wrap;max-width:220px;word-break:break-word;overflow-wrap:anywhere}
+.reg-reason{text-align:left;white-space:pre-wrap;max-width:340px;word-break:break-word;overflow-wrap:anywhere}
 .reg-empty{padding:16px;text-align:center;color:var(--tx3);font-size:12px}
 .reg-filter-bar{padding:8px 12px;background:var(--surf2);border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:8px}
 .reg-filter-wrap{position:relative;flex:1}
@@ -271,7 +275,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.12.0</footer>
+<footer class="ver-footer">v0.13.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -1315,8 +1319,8 @@ function renderRegistry() {
       tr.appendChild(editableRow(r));
     } else {
       tr.innerHTML =
-        '<td class="reg-dn"></td><td></td><td></td><td></td><td class="reg-mono" style="text-align:left"></td>' +
-        '<td></td><td></td><td class="reg-name"></td><td class="reg-mono" style="text-align:left"></td>' +
+        '<td class="reg-dn"></td><td class="reg-date"></td><td class="reg-chg"></td><td></td><td class="reg-mono" style="text-align:left"></td>' +
+        '<td class="reg-sheets"></td><td class="reg-format"></td><td class="reg-name"></td><td class="reg-mono" style="text-align:left"></td>' +
         '<td class="reg-reason"></td><td class="reg-actions"></td>';
       var c = tr.children;
       c[0].textContent = r.InventoryNumber || '';
@@ -1352,6 +1356,7 @@ function editableRow(r) {
   frag.appendChild(tdNum);
 
   var tdDate = document.createElement('td');
+  tdDate.className = 'reg-date';
   var inDate = document.createElement('input');
   inDate.type = 'date'; inDate.className = 'form-input mono';
   inDate.value = dateToInputValue(r.IssueDate);
@@ -1359,6 +1364,7 @@ function editableRow(r) {
   frag.appendChild(tdDate);
 
   var tdChangeNum = document.createElement('td');
+  tdChangeNum.className = 'reg-chg';
   tdChangeNum.textContent = (r.ChangeNumber != null) ? r.ChangeNumber : '';
   frag.appendChild(tdChangeNum);
 
@@ -1372,6 +1378,7 @@ function editableRow(r) {
   frag.appendChild(tdDesignation);
 
   var tdSheets = document.createElement('td');
+  tdSheets.className = 'reg-sheets';
   var inSheets = document.createElement('input');
   inSheets.type = 'number'; inSheets.min = '1'; inSheets.step = '1';
   inSheets.className = 'form-input mono'; inSheets.value = r.Sheets || 1;
@@ -1379,6 +1386,7 @@ function editableRow(r) {
   frag.appendChild(tdSheets);
 
   var tdFormat = document.createElement('td');
+  tdFormat.className = 'reg-format';
   var inFormat = document.createElement('input');
   inFormat.className = 'form-input mono'; inFormat.value = r.Format || '';
   tdFormat.appendChild(inFormat);
