@@ -107,7 +107,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 
 /* ── BOM tree / bulk document generation ── */
 .tree-layout{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}
-.tree-col{flex:1.6;min-width:420px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);max-height:360px;overflow:auto}
+.tree-col{flex:1.2;min-width:340px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);max-height:360px;overflow:auto}
 .tree-empty{padding:16px;text-align:center;color:var(--tx3);font-size:12px}
 
 .tree-matrix{border-collapse:collapse;font-size:12px;white-space:nowrap}
@@ -127,20 +127,21 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .btn-transfer:hover{opacity:.88}
 .btn-transfer:active{transform:scale(.98)}
 
-.gen-col{flex:1.4;min-width:300px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);display:flex;flex-direction:column;max-height:360px}
+.gen-col{flex:1.8;min-width:420px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);display:flex;flex-direction:column;max-height:360px}
 .gen-list{overflow-y:auto;flex:1}
 .gen-empty{padding:14px;text-align:center;color:var(--tx3);font-size:11px}
-.gen-card{display:flex;flex-direction:column;gap:5px;padding:7px 8px;border-bottom:1px solid var(--brd)}
+.gen-card{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:6px 8px;border-bottom:1px solid var(--brd)}
 .gen-card:last-child{border-bottom:none}
-.gen-card-top{display:flex;align-items:center;justify-content:space-between;gap:6px}
-.gen-card-designation{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--acc);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.gen-card-remove{border:none;background:transparent;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:0 2px;flex-shrink:0}
-.gen-card-name{font-size:11px;color:var(--tx2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.gen-card-row{display:flex;gap:6px;align-items:center}
-.gen-card-row .form-select,.gen-card-row .form-input{height:26px;font-size:11px;padding:0 6px}
-.gen-card-format{flex:1.3;min-width:0}
-.gen-card-sheets{flex:.7;min-width:0}
+.gen-card .form-select,.gen-card .form-input{height:24px;font-size:11px;padding:0 6px}
+.gen-card-name{flex:1;min-width:80px;font-size:11px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gen-card-designation{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--acc);white-space:nowrap;flex-shrink:0}
+.gen-card-format{flex-shrink:0;width:58px;min-width:58px}
+.gen-card-other{flex-basis:100%;display:none}
+.gen-card-other.on{display:block}
+.gen-card-sheets-label{font-size:10px;color:var(--tx3);flex-shrink:0}
+.gen-card-sheets{flex-shrink:0;width:38px;min-width:38px;text-align:center}
 .gen-card-changenum{font-family:var(--mono);font-size:10px;color:var(--grn);background:var(--grn-bg);border:1px solid var(--grn-brd);border-radius:4pt;padding:2px 6px;white-space:nowrap;flex-shrink:0}
+.gen-card-remove{border:none;background:transparent;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:0 2px;flex-shrink:0}
 
 /* Settings slide-over */
 #overlay{position:fixed;inset:0;background:rgba(0,0,0,.15);display:none;z-index:190}
@@ -172,7 +173,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
     <div class="pb">
 
       <div id="docFieldsWrap">
-        <div class="form-row" style="grid-template-columns:130px 120px 1fr 1.4fr;margin-bottom:0">
+        <div class="form-row" style="grid-template-columns:130px 120px 1.4fr 1fr;margin-bottom:0">
           <div class="form-group">
             <label class="form-label">Инв. номер</label>
             <input class="form-input formed-num" id="fInvNumber" readonly value="—">
@@ -182,15 +183,15 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
             <input class="form-input mono" type="date" id="fDate" onchange="onFormChange()">
           </div>
           <div class="form-group">
-            <label class="form-label">Наименование изделия</label>
-            <input class="form-input" id="fProductName" readonly value="—">
-          </div>
-          <div class="form-group">
             <label class="form-label">Изделие</label>
             <div class="ac-wrap">
               <input class="form-input" id="fProductInput" placeholder="Поиск по обозначению или наименованию…" autocomplete="off" oninput="onProductInput()" onfocus="onProductInput()" onblur="onProductBlur()">
               <div class="ac-drop" id="fProductDrop"></div>
             </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Наименование изделия</label>
+            <input class="form-input" id="fProductName" readonly value="—">
           </div>
         </div>
       </div>
@@ -255,7 +256,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.5.0</footer>
+<footer class="ver-footer">v0.5.1</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -734,28 +735,34 @@ function renderGenList() {
     var card = document.createElement('div');
     card.className = 'gen-card';
 
-    var top = document.createElement('div');
-    top.className = 'gen-card-top';
+    var nameSpan = document.createElement('span');
+    nameSpan.className = 'gen-card-name'; nameSpan.textContent = nameForItem(item);
+    card.appendChild(nameSpan);
+
     var dnSpan = document.createElement('span');
     dnSpan.className = 'gen-card-designation'; dnSpan.textContent = item.designation;
-    var removeBtn = document.createElement('button');
-    removeBtn.className = 'gen-card-remove'; removeBtn.textContent = '×'; removeBtn.title = 'Убрать';
-    removeBtn.addEventListener('click', function () {
-      state.generatedList.splice(idx, 1);
-      renderGenList();
-    });
-    top.appendChild(dnSpan); top.appendChild(removeBtn);
-    card.appendChild(top);
-
-    var nameDiv = document.createElement('div');
-    nameDiv.className = 'gen-card-name'; nameDiv.textContent = nameForItem(item);
-    card.appendChild(nameDiv);
-
-    var row = document.createElement('div');
-    row.className = 'gen-card-row';
+    card.appendChild(dnSpan);
 
     var formatSel = buildFormatSelect();
     formatSel.value = item.format;
+    card.appendChild(formatSel);
+
+    var otherInput = document.createElement('input');
+    otherInput.className = 'form-input gen-card-other';
+    otherInput.placeholder = 'напр. 3хА2';
+    otherInput.value = item.formatOther;
+    if (item.format === FORMAT_OTHER) otherInput.classList.add('on');
+    otherInput.addEventListener('input', function () { item.formatOther = otherInput.value; });
+    card.appendChild(otherInput);
+
+    formatSel.addEventListener('change', function () {
+      item.format = formatSel.value;
+      otherInput.classList.toggle('on', item.format === FORMAT_OTHER);
+    });
+
+    var sheetsLabel = document.createElement('span');
+    sheetsLabel.className = 'gen-card-sheets-label'; sheetsLabel.textContent = 'Листов';
+    card.appendChild(sheetsLabel);
 
     var sheetsInput = document.createElement('input');
     sheetsInput.type = 'number'; sheetsInput.min = '1'; sheetsInput.step = '1';
@@ -764,29 +771,21 @@ function renderGenList() {
     sheetsInput.addEventListener('input', function () {
       item.sheets = parseInt(sheetsInput.value, 10) || 1;
     });
+    card.appendChild(sheetsInput);
 
     var changeNumSpan = document.createElement('span');
     changeNumSpan.className = 'gen-card-changenum';
     var previewChangeNum = computeNextChangeNumber(item.designation);
     changeNumSpan.textContent = '№' + (typeof previewChangeNum === 'number' ? previewChangeNum : '—');
+    card.appendChild(changeNumSpan);
 
-    row.appendChild(formatSel); row.appendChild(sheetsInput); row.appendChild(changeNumSpan);
-    card.appendChild(row);
-
-    var otherRow = document.createElement('div');
-    otherRow.className = 'gen-card-row';
-    otherRow.style.display = (item.format === FORMAT_OTHER) ? '' : 'none';
-    var otherInput = document.createElement('input');
-    otherInput.className = 'form-input'; otherInput.placeholder = 'напр. 3хА2';
-    otherInput.value = item.formatOther;
-    otherInput.addEventListener('input', function () { item.formatOther = otherInput.value; });
-    otherRow.appendChild(otherInput);
-    card.appendChild(otherRow);
-
-    formatSel.addEventListener('change', function () {
-      item.format = formatSel.value;
-      otherRow.style.display = (item.format === FORMAT_OTHER) ? '' : 'none';
+    var removeBtn = document.createElement('button');
+    removeBtn.className = 'gen-card-remove'; removeBtn.textContent = '×'; removeBtn.title = 'Убрать';
+    removeBtn.addEventListener('click', function () {
+      state.generatedList.splice(idx, 1);
+      renderGenList();
     });
+    card.appendChild(removeBtn);
 
     el.appendChild(card);
   });
