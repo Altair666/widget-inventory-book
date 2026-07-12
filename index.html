@@ -94,6 +94,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .reg-filter-icon{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--tx3);pointer-events:none}
 
 .reg-actions{white-space:nowrap;width:56px;text-align:right}
+.reg-actions-wrap{display:flex;justify-content:flex-end;align-items:center;gap:4px}
 .cell-edit-btn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border:1px solid transparent;border-radius:4pt;background:transparent;color:#E07B1F;cursor:pointer;flex-shrink:0;transition:all .1s;padding:0}
 .cell-edit-btn:hover{background:#FFF4E6;color:#C5651A;border-color:#F5D4A0}
 .cell-edit-btn.save{color:var(--grn)}
@@ -270,7 +271,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.11.0</footer>
+<footer class="ver-footer">v0.12.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -1329,9 +1330,12 @@ function renderRegistry() {
       c[8].textContent = r.FileName || '';
       c[9].textContent = r.Note || '';
       var actions = c[10];
+      var actionsWrap = document.createElement('span');
+      actionsWrap.className = 'reg-actions-wrap';
       var editBtn = iconButton('cell-edit-btn', pencilSvg(), 'Редактировать');
       editBtn.addEventListener('click', function () { editingId = r.id; renderRegistry(); });
-      actions.appendChild(editBtn);
+      actionsWrap.appendChild(editBtn);
+      actions.appendChild(actionsWrap);
     }
     tbody.appendChild(tr);
   });
@@ -1416,8 +1420,11 @@ function editableRow(r) {
   });
   var cancelBtn = iconButton('cell-edit-btn cancel', xSvg(), 'Отмена');
   cancelBtn.addEventListener('click', function () { editingId = null; renderRegistry(); });
-  tdActions.appendChild(saveBtn);
-  tdActions.appendChild(cancelBtn);
+  var actionsWrap = document.createElement('span');
+  actionsWrap.className = 'reg-actions-wrap';
+  actionsWrap.appendChild(saveBtn);
+  actionsWrap.appendChild(cancelBtn);
+  tdActions.appendChild(actionsWrap);
   frag.appendChild(tdActions);
 
   return frag;
