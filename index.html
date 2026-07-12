@@ -113,6 +113,36 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .form-input.dropdown-input:focus{border-color:var(--acc);background:var(--surf)}
 .dropdown-arrow{position:absolute;right:9px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--tx3)}
 
+/* ── BOM tree / bulk document generation ── */
+.tree-layout{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}
+.tree-col{flex:2.2;min-width:480px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);max-height:360px;overflow:auto}
+.tree-empty{padding:16px;text-align:center;color:var(--tx3);font-size:12px}
+
+.tree-matrix{border-collapse:collapse;font-size:12px;white-space:nowrap}
+.tree-matrix th,.tree-matrix td{border-bottom:1px solid var(--brd);padding:4px 6px;text-align:center}
+.tree-matrix thead th{position:sticky;top:0;background:var(--surf);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--tx2);border-bottom:2px solid var(--brd);z-index:1}
+.tree-matrix th.tm-name,.tree-matrix td.tm-name{text-align:left;white-space:nowrap;position:sticky;left:0;background:var(--surf);z-index:2;min-width:260px}
+.tree-matrix thead th.tm-name{z-index:3}
+.tree-matrix th.tm-shade,.tree-matrix td.tm-shade{background:#d9d9d9}
+.tree-matrix tbody tr:hover td:not(.tm-name){background:var(--acc-bg)}
+.tree-matrix tbody tr:last-child td{border-bottom:none}
+.tree-dn{font-family:var(--mono);font-size:12px;color:var(--acc)}
+.tree-name{font-size:12px;color:var(--tx2)}
+.tree-matrix td.tm-cb input{width:14px;height:14px;cursor:pointer;accent-color:var(--acc)}
+
+.gen-transfer{display:flex;align-items:center;justify-content:center;align-self:stretch}
+.btn-transfer{width:30px;height:100%;min-height:100px;border:none;border-radius:var(--r);background:#16b378;color:#fff;font-size:15px;font-weight:600;letter-spacing:.05em;cursor:pointer;transition:opacity .15s,transform .1s}
+.btn-transfer:hover{opacity:.88}
+.btn-transfer:active{transform:scale(.98)}
+
+.gen-col{flex:1;min-width:220px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);display:flex;flex-direction:column;max-height:360px}
+.gen-list{overflow-y:auto;flex:1}
+.gen-empty{padding:14px;text-align:center;color:var(--tx3);font-size:11px}
+.gen-item{display:flex;align-items:center;gap:6px;padding:4px 8px;border-bottom:1px solid var(--brd);font-family:var(--mono);font-size:11px;color:var(--tx)}
+.gen-item:last-child{border-bottom:none}
+.gen-item span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gen-item button{border:none;background:transparent;color:var(--red);cursor:pointer;font-size:13px;line-height:1;padding:0 2px}
+
 /* Settings slide-over */
 #overlay{position:fixed;inset:0;background:rgba(0,0,0,.15);display:none;z-index:190}
 #overlay.on{display:block}
@@ -143,7 +173,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
     <div class="pb">
 
       <div id="docFieldsWrap">
-        <div class="form-row" style="grid-template-columns:130px 120px 1fr 50px 1.4fr 110px 50px 70px 120px 110px">
+        <div class="form-row" style="grid-template-columns:130px 120px 1fr 1.4fr 110px 50px 70px 120px 110px">
           <div class="form-group">
             <label class="form-label">Инв. номер</label>
             <input class="form-input formed-num" id="fInvNumber" readonly value="—">
@@ -155,12 +185,6 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
           <div class="form-group">
             <label class="form-label">Наименование изделия</label>
             <input class="form-input" id="fProductName" readonly value="—">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Фикс.</label>
-            <button type="button" class="btn-suffix" id="btnKeepProduct" title="Оставить изделие выбранным после регистрации документа" onclick="toggleKeepProduct()" style="width:100%;display:flex;align-items:center;justify-content:center">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>
-            </button>
           </div>
           <div class="form-group">
             <label class="form-label">Изделие</label>
@@ -227,6 +251,36 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
     </div>
   </div>
 
+  <!-- BOM TREE / BULK DOCUMENT GENERATION -->
+  <div class="panel" id="bomPanel" style="display:none">
+    <div class="ph">
+      <span class="ph-title">Состав изделия и формируемые документы</span>
+      <button class="icon-btn" id="btnClearChecks" title="Очистить все отметки" onclick="clearAllChecks()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m9 9 6 6M15 9l-6 6"/></svg>
+      </button>
+    </div>
+    <div class="pb">
+      <div class="tree-layout">
+        <div class="tree-col">
+          <div id="treeBody"><div class="tree-empty">Выберите изделие выше, чтобы увидеть его состав</div></div>
+        </div>
+        <div class="gen-transfer">
+          <button class="btn-transfer" onclick="generateDocList()" title="Сформировать список документов">»</button>
+        </div>
+        <div class="gen-col">
+          <div class="gen-list" id="genList"><div class="gen-empty">Формируемый список документов пуст</div></div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px">
+        <button class="btn-add" id="btnRegisterBatch" onclick="registerGeneratedDocs()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          Зарегистрировать документы
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- REGISTRY -->
   <div class="panel">
     <div class="ph">
@@ -249,7 +303,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.3.3</footer>
+<footer class="ver-footer">v0.4.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -323,7 +377,11 @@ var state = {
   selectedProductId: null,
   luSuffix: false, // true when the "-ЛУ" suffix should be appended to the computed designation
   docTypeCode: null, // selected DOC_TYPES code, null until populateSelects() picks a default
-  keepProduct: false // true = resetForm() keeps the selected product after registration
+
+  childrenByParent: {}, // parentId -> [id,...], for the BOM tree
+  treeRows: [],          // [{id, depth}] flattened BOM of the selected product
+  cellChecked: {},       // componentId -> { docTypeCode -> true }
+  generatedList: []      // [{compId, code, designation}, ...] queued for bulk registration
 };
 
 function setConn(ok, label) {
@@ -425,8 +483,9 @@ function loadComponents() {
     grist.docApi.fetchTable(candidates[i]).then(function (table) {
       var ids = table.id || [];
       var byId = {};
+      var byParent = {};
       ids.forEach(function (id, i2) {
-        byId[id] = {
+        var comp = {
           id: id,
           name: table.name ? table.name[i2] : '',
           primary_use: table.primary_use ? table.primary_use[i2] : 0,
@@ -434,9 +493,20 @@ function loadComponents() {
           org_prefix: table.org_prefix ? table.org_prefix[i2] : '',
           serial: table.serial ? table.serial[i2] : ''
         };
+        byId[id] = comp;
+        var parent = comp.primary_use || 0;
+        if (!byParent[parent]) byParent[parent] = [];
+        byParent[parent].push(id);
+      });
+      Object.keys(byParent).forEach(function (p) {
+        byParent[p].sort(function (a, b) {
+          return String(byId[a].decimal_number).localeCompare(String(byId[b].decimal_number), undefined, { numeric: true });
+        });
       });
       state.componentsById = byId;
+      state.childrenByParent = byParent;
       state.componentsLoaded = true;
+      rebuildTreeForSelectedProduct();
       updateComputedFields();
     }).catch(function () { tryNext(i + 1); });
   }
@@ -505,6 +575,10 @@ function selectProduct(id) {
   var comp = state.componentsById[id];
   fProductInput.value = comp ? (comp.decimal_number || '') : ('#' + id);
   fProductDrop.classList.remove('on');
+  state.generatedList = [];
+  rebuildTreeForSelectedProduct();
+  renderGenList();
+  updateBomPanelVisibility();
   onFormChange();
 }
 
@@ -596,17 +670,6 @@ function updateLUButtonState() {
   btn.classList.toggle('active', state.luSuffix);
 }
 
-function toggleKeepProduct() {
-  state.keepProduct = !state.keepProduct;
-  updateKeepProductButtonState();
-}
-
-function updateKeepProductButtonState() {
-  var btn = document.getElementById('btnKeepProduct');
-  if (!btn) return;
-  btn.classList.toggle('active', state.keepProduct);
-}
-
 function onFormatChange() {
   fFormatOtherRow.style.display = (fFormat.value === FORMAT_OTHER) ? '' : 'none';
   onFormChange();
@@ -617,6 +680,253 @@ function currentFormat() {
 }
 
 function onFormChange() { updateComputedFields(); }
+
+// ---------- BOM tree (bulk document generation) ----------
+
+function collectDescendants(rootId) {
+  var rows = [];
+  var visited = {};
+  (function walk(id, depth) {
+    if (visited[id]) return;
+    visited[id] = true;
+    rows.push({ id: id, depth: depth });
+    var children = state.childrenByParent[id] || [];
+    children.forEach(function (childId) { walk(childId, depth + 1); });
+  })(rootId, 0);
+  return rows;
+}
+
+// Default checked doc-type codes per component role in the BOM hierarchy:
+// - the top-level assembly (the selected product itself, depth 0)
+// - a sub-assembly (has children)
+// - a bottom-level part (no children) — just "СП" (bare decimal number, no suffix)
+var DEFAULT_CODES_TOP = ['СП', 'СБ', 'ГЧ', 'ТУ', 'РЭ', 'Д1', 'ПС', 'ВЭ', 'Э4', 'Э5'];
+var DEFAULT_CODES_ASSEMBLY = ['СП', 'СБ', 'ВП'];
+var DEFAULT_CODES_LEAF = ['СП'];
+
+function defaultCodesForRow(row) {
+  if (row.depth === 0) return DEFAULT_CODES_TOP;
+  var hasChildren = (state.childrenByParent[row.id] || []).length > 0;
+  return hasChildren ? DEFAULT_CODES_ASSEMBLY : DEFAULT_CODES_LEAF;
+}
+
+function rebuildTreeForSelectedProduct() {
+  if (!state.selectedProductId || !state.componentsLoaded) {
+    state.treeRows = [];
+    state.cellChecked = {};
+    renderTree();
+    return;
+  }
+  state.treeRows = collectDescendants(state.selectedProductId);
+  var cells = {};
+  state.treeRows.forEach(function (row) {
+    var rowCells = {};
+    defaultCodesForRow(row).forEach(function (c) { rowCells[c] = true; });
+    cells[row.id] = rowCells;
+  });
+  state.cellChecked = cells;
+  renderTree();
+}
+
+function clearAllChecks() {
+  Object.keys(state.cellChecked).forEach(function (id) {
+    state.cellChecked[id] = {};
+  });
+  renderTree();
+}
+
+function renderTree() {
+  var body = document.getElementById('treeBody');
+  if (!state.treeRows.length) {
+    body.innerHTML = '<div class="tree-empty">' +
+      (state.selectedProductId ? 'У изделия нет вложенных компонентов' : 'Выберите изделие выше, чтобы увидеть его состав') +
+      '</div>';
+    return;
+  }
+
+  var table = document.createElement('table');
+  table.className = 'tree-matrix';
+
+  var thead = document.createElement('thead');
+  var headRow = document.createElement('tr');
+  var thName = document.createElement('th');
+  thName.className = 'tm-name'; thName.textContent = 'Состав изделия';
+  headRow.appendChild(thName);
+  DOC_TYPES.forEach(function (dt, i) {
+    var th = document.createElement('th');
+    th.className = 'tm-cb' + (i % 2 === 0 ? ' tm-shade' : '');
+    th.textContent = dt.label;
+    headRow.appendChild(th);
+  });
+  thead.appendChild(headRow);
+  table.appendChild(thead);
+
+  var tbody = document.createElement('tbody');
+  state.treeRows.forEach(function (row) {
+    var comp = state.componentsById[row.id];
+    if (!comp) return;
+    if (!state.cellChecked[row.id]) state.cellChecked[row.id] = {};
+    var rowCells = state.cellChecked[row.id];
+
+    var tr = document.createElement('tr');
+    var tdName = document.createElement('td');
+    tdName.className = 'tm-name';
+    tdName.style.paddingLeft = (6 + row.depth * 16) + 'px';
+    var dn = document.createElement('span');
+    dn.className = 'tree-dn'; dn.textContent = comp.decimal_number || '';
+    var nm = document.createElement('span');
+    nm.className = 'tree-name'; nm.textContent = ' ' + (comp.name || '');
+    tdName.appendChild(dn); tdName.appendChild(nm);
+    tr.appendChild(tdName);
+
+    DOC_TYPES.forEach(function (dt, i) {
+      var td = document.createElement('td');
+      td.className = 'tm-cb' + (i % 2 === 0 ? ' tm-shade' : '');
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = !!rowCells[dt.code];
+      cb.addEventListener('change', function () { rowCells[dt.code] = cb.checked; });
+      td.appendChild(cb);
+      tr.appendChild(td);
+    });
+
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+
+  body.innerHTML = '';
+  body.appendChild(table);
+}
+
+function updateBomPanelVisibility() {
+  document.getElementById('bomPanel').style.display = state.selectedProductId ? '' : 'none';
+}
+
+// ---------- Generated document list (queued for bulk registration) ----------
+
+function generateDocList() {
+  var pairs = [];
+  state.treeRows.forEach(function (row) {
+    var comp = state.componentsById[row.id];
+    if (!comp) return;
+    var rowCells = state.cellChecked[row.id] || {};
+    DOC_TYPES.forEach(function (dt) {
+      if (rowCells[dt.code]) {
+        pairs.push({ compId: row.id, code: dt.code, designation: (comp.decimal_number || '') + dt.code });
+      }
+    });
+  });
+  if (!pairs.length) {
+    window.alert('Отметьте хотя бы один документ в таблице состава изделия.');
+    return;
+  }
+  pairs.forEach(function (p) {
+    var exists = state.generatedList.some(function (g) { return g.designation === p.designation; });
+    if (!exists) state.generatedList.push(p);
+  });
+  renderGenList();
+}
+
+function renderGenList() {
+  var el = document.getElementById('genList');
+  if (!state.generatedList.length) {
+    el.innerHTML = '<div class="gen-empty">Формируемый список документов пуст</div>';
+    return;
+  }
+  el.innerHTML = '';
+  state.generatedList.forEach(function (item, idx) {
+    var row = document.createElement('div');
+    row.className = 'gen-item';
+    var span = document.createElement('span'); span.textContent = item.designation;
+    var btn = document.createElement('button'); btn.textContent = '×'; btn.title = 'Убрать';
+    btn.addEventListener('click', function () {
+      state.generatedList.splice(idx, 1);
+      renderGenList();
+    });
+    row.appendChild(span); row.appendChild(btn);
+    el.appendChild(row);
+  });
+}
+
+// Массовая регистрация: каждая отмеченная пара (компонент, тип документа)
+// становится ОТДЕЛЬНОЙ записью в Inventory_book (не объединяются в одну),
+// но Дата/Листов/Формат/Причина — общие для всей пачки. Инв. номер и
+// № изменения назначаются последовательно внутри пачки, чтобы не было
+// дублей при одном обращении к grist.selectedTable.create().
+function registerGeneratedDocs() {
+  if (!state.recordsLoaded) return;
+  if (!state.selectedProductId) { window.alert('Выберите изделие.'); return; }
+  if (!state.generatedList.length) { window.alert('Сформируйте список документов: отметьте типы в таблице состава и нажмите «»».'); return; }
+  var dateVal = document.getElementById('fDate').value;
+  var year = dateVal ? dateVal.slice(0, 4) : '';
+  if (!year) { window.alert('Укажите дату.'); return; }
+  var format = currentFormat();
+  if (!format) { window.alert('Укажите формат документа.'); return; }
+  var sheets = parseInt(document.getElementById('fSheets').value, 10);
+  if (!sheets || sheets < 1) { window.alert('Укажите количество листов.'); return; }
+  var reason = document.getElementById('fNote').value.trim();
+
+  var yy = String(year).slice(-2);
+  var re = new RegExp('^' + yy + '-(\\d{5})$');
+  var maxInv = 0;
+  state.records.forEach(function (r) {
+    var m = re.exec(String(r.InventoryNumber || ''));
+    if (m) { var n = parseInt(m[1], 10); if (n > maxInv) maxInv = n; }
+  });
+
+  var recordsToCreate = state.generatedList.map(function (item) {
+    maxInv += 1;
+    var padded = String(maxInv);
+    while (padded.length < 5) padded = '0' + padded;
+    var invNumber = yy + '-' + padded;
+
+    var changeNumber = computeNextChangeNumber(item.designation);
+    bumpChangeNumberFloor(item.designation, changeNumber);
+
+    var comp = state.componentsById[item.compId];
+    var name = (comp && comp.name ? comp.name + '. ' + fullNameForDocType(item.code) : '').trim();
+    var fileName = item.designation.replace(/\s+/g, '') + '_изм' + pad2(changeNumber) + '.pdf';
+
+    return {
+      fields: {
+        InventoryNumber: invNumber,
+        IssueDate: inputValueToDate(dateVal),
+        Product: item.compId,
+        ProductName: comp ? comp.name : '',
+        DocumentDesignation: item.designation,
+        DocTypeCode: item.code,
+        Sheets: sheets,
+        Format: format,
+        Name: name,
+        FileName: fileName,
+        ChangeNumber: changeNumber,
+        Note: reason
+      }
+    };
+  });
+
+  var btn = document.getElementById('btnRegisterBatch');
+  btn.disabled = true;
+  grist.selectedTable.create(recordsToCreate).then(function (result) {
+    var results = Array.isArray(result) ? result : [result];
+    results.forEach(function (res, i) {
+      state.records.push(Object.assign({ id: res.id }, recordsToCreate[i].fields));
+    });
+    state.generatedList = [];
+    rebuildTreeForSelectedProduct();
+    renderGenList();
+    document.getElementById('fSheets').value = '1';
+    fFormat.value = FORMATS[0];
+    fFormatOtherRow.style.display = 'none';
+    fFormatOther.value = '';
+    document.getElementById('fNote').value = '';
+    updateComputedFields();
+    btn.disabled = false;
+  }).catch(function (err) {
+    showError(err);
+    btn.disabled = false;
+  });
+}
 
 // ---------- Date helpers ----------
 
@@ -668,6 +978,7 @@ function updateComputedFields() {
   var comp = state.selectedProductId ? state.componentsById[state.selectedProductId] : null;
   document.getElementById('fProductName').value = comp ? comp.name : '—';
   updateLUButtonState();
+  updateBomPanelVisibility();
   if (!comp) return;
 
   var designation = computeDesignation();
@@ -691,12 +1002,11 @@ function updateComputedFields() {
 
 // ---------- Register ----------
 
+// Изделие сознательно НЕ сбрасывается: одно и то же изделие обычно
+// получает несколько документов подряд (разных типов), и повторный
+// поиск/выбор каждый раз был бы лишним трением.
 function resetForm() {
   document.getElementById('fDate').value = dateToInputValue(Math.floor(Date.now() / 1000));
-  if (!state.keepProduct) {
-    fProductInput.value = '';
-    state.selectedProductId = null;
-  }
   state.luSuffix = false;
   document.getElementById('fSheets').value = '1';
   fFormat.value = FORMATS[0];
@@ -707,7 +1017,6 @@ function resetForm() {
 }
 populateSelects();
 resetForm();
-updateKeepProductButtonState();
 
 function registerDocument() {
   if (!state.recordsLoaded) return;
