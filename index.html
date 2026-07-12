@@ -110,8 +110,8 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 /* ── BOM tree / bulk document generation ── */
 .tree-layout{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}
 .tree-layout.standalone .tree-col,.tree-layout.standalone .gen-transfer{display:none}
-.tree-layout.standalone .gen-col{flex:1 1 100%}
-.tree-col{flex:1.2;min-width:340px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);max-height:360px;overflow:auto}
+.tree-layout.standalone .gen-col{flex:0 1 560px;max-width:560px;margin-left:auto}
+.tree-col{flex:1.6;min-width:340px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);max-height:360px;overflow:auto}
 .tree-empty{padding:16px;text-align:center;color:var(--tx3);font-size:12px}
 
 .tree-matrix{border-collapse:collapse;font-size:12px;white-space:nowrap}
@@ -132,7 +132,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .btn-transfer:hover{opacity:.88}
 .btn-transfer:active{transform:scale(.98)}
 
-.gen-col{flex:1.8;min-width:420px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);display:flex;flex-direction:column;max-height:360px}
+.gen-col{flex:1.1;min-width:380px;max-width:560px;margin-left:auto;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);display:flex;flex-direction:column;max-height:360px}
 .gen-list{overflow-y:auto;flex:1}
 .gen-empty{padding:14px;text-align:center;color:var(--tx3);font-size:11px}
 .gen-card{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:6px 8px;border-bottom:1px solid var(--brd)}
@@ -260,7 +260,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.5.10</footer>
+<footer class="ver-footer">v0.5.11</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -1209,9 +1209,9 @@ function renderRegistry() {
   table.className = 'reg-table';
   table.innerHTML =
     '<thead><tr>' +
-    '<th>Инв. номер</th><th>Дата</th><th>Изделие</th><th style="text-align:left">Обозначение</th>' +
+    '<th>Инв. номер</th><th>Дата</th><th>№ изм.</th><th>Изделие</th><th style="text-align:left">Обозначение</th>' +
     '<th>Листов</th><th>Формат</th><th style="text-align:left">Наименование</th><th style="text-align:left">Имя файла</th>' +
-    '<th>№ изм.</th><th style="text-align:left">Примечание</th><th></th>' +
+    '<th style="text-align:left">Примечание</th><th></th>' +
     '</tr></thead><tbody></tbody>';
   var tbody = table.querySelector('tbody');
 
@@ -1221,19 +1221,19 @@ function renderRegistry() {
       tr.appendChild(editableRow(r));
     } else {
       tr.innerHTML =
-        '<td class="reg-dn"></td><td></td><td></td><td class="reg-mono" style="text-align:left"></td>' +
+        '<td class="reg-dn"></td><td></td><td></td><td></td><td class="reg-mono" style="text-align:left"></td>' +
         '<td></td><td></td><td class="reg-name"></td><td class="reg-mono" style="text-align:left"></td>' +
-        '<td></td><td class="reg-reason"></td><td class="reg-actions"></td>';
+        '<td class="reg-reason"></td><td class="reg-actions"></td>';
       var c = tr.children;
       c[0].textContent = r.InventoryNumber || '';
       c[1].textContent = formatDate(r.IssueDate);
-      c[2].textContent = productLabelForRecord(r);
-      c[3].textContent = r.DocumentDesignation || '';
-      c[4].textContent = r.Sheets || '';
-      c[5].textContent = r.Format || '';
-      c[6].textContent = r.Name || '';
-      c[7].textContent = r.FileName || '';
-      c[8].textContent = r.ChangeNumber || '';
+      c[2].textContent = r.ChangeNumber || '';
+      c[3].textContent = productLabelForRecord(r);
+      c[4].textContent = r.DocumentDesignation || '';
+      c[5].textContent = r.Sheets || '';
+      c[6].textContent = r.Format || '';
+      c[7].textContent = r.Name || '';
+      c[8].textContent = r.FileName || '';
       c[9].textContent = r.Note || '';
       var actions = c[10];
       var editBtn = iconButton('cell-edit-btn', pencilSvg(), 'Редактировать');
@@ -1263,6 +1263,10 @@ function editableRow(r) {
   inDate.value = dateToInputValue(r.IssueDate);
   tdDate.appendChild(inDate);
   frag.appendChild(tdDate);
+
+  var tdChangeNum = document.createElement('td');
+  tdChangeNum.textContent = r.ChangeNumber || '';
+  frag.appendChild(tdChangeNum);
 
   var tdProduct = document.createElement('td');
   tdProduct.textContent = productLabelForRecord(r);
@@ -1301,10 +1305,6 @@ function editableRow(r) {
   inFileName.className = 'form-input mono'; inFileName.value = r.FileName || '';
   tdFileName.appendChild(inFileName);
   frag.appendChild(tdFileName);
-
-  var tdChangeNum = document.createElement('td');
-  tdChangeNum.textContent = r.ChangeNumber || '';
-  frag.appendChild(tdChangeNum);
 
   var tdNote = document.createElement('td');
   tdNote.className = 'reg-reason';
