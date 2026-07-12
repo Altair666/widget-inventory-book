@@ -258,7 +258,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.5.7</footer>
+<footer class="ver-footer">v0.5.8</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -489,18 +489,25 @@ function fetchTableByCandidates(candidates, allTables) {
   return tryNext(0);
 }
 
-// Grist column ids can also differ in case from what we expect (e.g. a
-// column literally named "Name" or "Decimal_number") — resolve field access
-// case-insensitively against the table's actual columns, once per table.
+// Grist column ids can also differ in case, or use an entirely different
+// name for the same concept (e.g. ESPD_components/ESTD_components use
+// espd_number/estd_number instead of decimal_number) — resolve field access
+// against a list of acceptable names, case-insensitively, trying each in
+// order until one matches an actual column.
 function makeColGetter(table) {
   var cache = {};
   return function (key) {
-    if (!(key in cache)) {
-      var lower = key.toLowerCase();
-      var actualKey = Object.keys(table).filter(function (k) { return k.toLowerCase() === lower; })[0];
-      cache[key] = actualKey ? table[actualKey] : null;
+    var names = Array.isArray(key) ? key : [key];
+    var cacheKey = names.join('|');
+    if (!(cacheKey in cache)) {
+      var actualKey = null;
+      for (var i = 0; i < names.length && !actualKey; i++) {
+        var lower = names[i].toLowerCase();
+        actualKey = Object.keys(table).filter(function (k) { return k.toLowerCase() === lower; })[0] || null;
+      }
+      cache[cacheKey] = actualKey ? table[actualKey] : null;
     }
-    return cache[key];
+    return cache[cacheKey];
   };
 }
 
@@ -549,10 +556,10 @@ function loadComponents() {
     // merged into the same search space as standalone, childless nodes
     // (namespaced ids so they can never collide with a real Components id,
     // and are never added to childrenByParent so they don't join any tree).
-    function addStandalone(table, prefix, source) {
+    function addStandalone(table, prefix, source, numberFieldNames) {
       if (!table) return;
       var col = makeColGetter(table);
-      var tName = col('name'), tDn = col('decimal_number'), tOrg = col('org_prefix'), tSerial = col('serial');
+      var tName = col('name'), tDn = col(numberFieldNames), tOrg = col('org_prefix'), tSerial = col('serial');
       var ids = table.id || [];
       ids.forEach(function (id, i2) {
         var nsId = prefix + id;
@@ -568,8 +575,8 @@ function loadComponents() {
         };
       });
     }
-    addStandalone(espdTable, 'esp:', 'esp');
-    addStandalone(estdTable, 'est:', 'est');
+    addStandalone(espdTable, 'esp:', 'esp', ['decimal_number', 'espd_number']);
+    addStandalone(estdTable, 'est:', 'est', ['decimal_number', 'estd_number']);
 
     Object.keys(byParent).forEach(function (p) {
       byParent[p].sort(function (a, b) {
