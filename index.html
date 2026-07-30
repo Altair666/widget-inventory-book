@@ -288,7 +288,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.24.0</footer>
+<footer class="ver-footer">v0.25.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -850,10 +850,13 @@ function addExecutionRow(row, comp, execValue) {
     serial: comp.serial
   };
 
+  // Вставляем СРАЗУ после строки-источника — там же, где до подтверждения
+  // была видна строка-черновик ввода. Раньше вставка пропускала всё
+  // поддерево источника (для сборок это все её дети), из-за чего строка
+  // исполнения улетала в конец подсостава — визуально «в самый низ», а не
+  // туда, где её только что редактировали.
   var startIdx = state.treeRows.findIndex(function (r) { return r.id === row.id; });
-  var insertIdx = startIdx + 1;
-  while (insertIdx < state.treeRows.length && state.treeRows[insertIdx].depth > row.depth) insertIdx++;
-  state.treeRows.splice(insertIdx, 0, { id: execId, depth: row.depth });
+  state.treeRows.splice(startIdx + 1, 0, { id: execId, depth: row.depth });
 
   var execCells = {};
   defaultCodesForRow(row).forEach(function (c) { execCells[c] = true; });
