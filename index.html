@@ -275,7 +275,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.17.0</footer>
+<footer class="ver-footer">v0.18.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -323,29 +323,38 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 // code:'', поэтому везде используется dt.label как уникальный ключ (не
 // dt.code). skipNameSuffix у «ЧД» означает, что для конечной детали в
 // «Наименование» тип документа не дописывается (см. nameForItem()).
+//
+// Порядок ниже сгруппирован по разделам классификации: чертежи (ГОСТ 2.102
+// табл.1) → схемы (ГОСТ 2.701, по номеру типа: 2-функциональная,
+// 3-принципиальная +ПЭ3-компаньон сразу за ней, 4-соединений, 5-подключения)
+// → ЛУ/УД (листы утверждения/удостоверяющие — вне таблиц 2.102, оставлены
+// рядом с текстовыми документами) → текстовые документы (ГОСТ 2.102 табл.3:
+// СП, ВС, Д1, ВП, ТУ) → эксплуатационные документы (ГОСТ 2.601: ПС, ВЭ, ВДЭ,
+// ЭТ, РЭ) → Т5М/Д («Данные конструкции», нестандартные коды) и ИС в самом
+// конце — по прямой просьбе пользователя разместить Т5М и Д перед ИС.
 var DOC_TYPES = [
   { code: 'ЧД', label: 'ЧД', fullName: 'Чертёж детали', skipNameSuffix: true, headerText: '/' },
-  { code: 'Д', label: 'Д', fullName: 'Данные конструкции' },
-  { code: 'Т5М', label: 'Т5М', fullName: 'Данные конструкции' },
+  { code: 'СБ', label: 'СБ', fullName: 'Сборочный чертёж' },
+  { code: 'ГЧ', label: 'ГЧ', fullName: 'Габаритный чертёж' },
+  { code: 'Э2', label: 'Э2', fullName: 'Схема функциональная' },
+  { code: 'Э3', label: 'Э3', fullName: 'Схема электрическая принципиальная' },
+  { code: 'ПЭ3', label: 'ПЭ3', fullName: 'Перечень элементов' },
+  { code: 'Э4', label: 'Э4', fullName: 'Схема соединений' },
+  { code: 'Э5', label: 'Э5', fullName: 'Схема подключения' },
   { code: 'ЛУ', label: 'ЛУ', fullName: 'Лист утверждения' },
   { code: 'УД', label: 'УД', fullName: 'Удостоверяющий лист' },
   { code: '', label: 'СП', fullName: 'Спецификация' },
-  { code: 'СБ', label: 'СБ', fullName: 'Сборочный чертёж' },
-  { code: 'ГЧ', label: 'ГЧ', fullName: 'Габаритный чертёж' },
-  { code: 'ТУ', label: 'ТУ', fullName: 'Технические условия' },
-  { code: 'РЭ', label: 'РЭ', fullName: 'Руководство по эксплуатации' },
-  { code: 'Д1', label: 'Д1', fullName: 'Ведомость документов' },
   { code: 'ВС', label: 'ВС', fullName: 'Ведомость спецификаций' },
+  { code: 'Д1', label: 'Д1', fullName: 'Ведомость документов' },
+  { code: 'ВП', label: 'ВП', fullName: 'Ведомость покупных изделий' },
+  { code: 'ТУ', label: 'ТУ', fullName: 'Технические условия' },
   { code: 'ПС', label: 'ПС', fullName: 'Паспорт' },
   { code: 'ВЭ', label: 'ВЭ', fullName: 'Ведомость эксплуатационных документов' },
   { code: 'ВДЭ', label: 'ВДЭ', fullName: 'Ведомость электронных документов' },
   { code: 'ЭТ', label: 'ЭТ', fullName: 'Этикетка' },
-  { code: 'ВП', label: 'ВП', fullName: 'Ведомость покупных изделий' },
-  { code: 'Э5', label: 'Э5', fullName: 'Схема подключения' },
-  { code: 'Э3', label: 'Э3', fullName: 'Схема электрическая принципиальная' },
-  { code: 'ПЭ3', label: 'ПЭ3', fullName: 'Перечень элементов' },
-  { code: 'Э4', label: 'Э4', fullName: 'Схема соединений' },
-  { code: 'Э2', label: 'Э2', fullName: 'Схема функциональная' },
+  { code: 'РЭ', label: 'РЭ', fullName: 'Руководство по эксплуатации' },
+  { code: 'Т5М', label: 'Т5М', fullName: 'Данные конструкции' },
+  { code: 'Д', label: 'Д', fullName: 'Данные конструкции' },
   { code: 'ИС', label: 'ИС', fullName: 'Инструкция по эксплуатации' }
 ];
 
