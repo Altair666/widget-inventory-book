@@ -275,7 +275,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.14.0</footer>
+<footer class="ver-footer">v0.15.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -324,6 +324,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 var DOC_TYPES = [
   { code: '', label: 'Д', fullName: 'Чертёж детали', skipNameSuffix: true },
   { code: 'ЛУ', label: 'ЛУ', fullName: 'Лист утверждения' },
+  { code: 'УД', label: 'УД', fullName: 'Удостоверяющий лист' },
   { code: '', label: 'СП', fullName: 'Спецификация' },
   { code: 'СБ', label: 'СБ', fullName: 'Сборочный чертёж' },
   { code: 'ГЧ', label: 'ГЧ', fullName: 'Габаритный чертёж' },
@@ -374,6 +375,7 @@ var state = {
   treeRows: [],          // [{id, depth}] flattened BOM of the selected product
   cellChecked: {},       // componentId -> { docTypeLabel -> true }
   cellLU: {},            // componentId -> { docTypeLabel -> true } — companion "-ЛУ" toggle per cell
+  cellUD: {},            // componentId -> { docTypeLabel -> true } — companion "-УД" toggle per cell
   generatedList: [],     // [{compId, code, label, designation, format, formatOther, sheets}, ...] queued for bulk registration
   genExpanded: false      // true = состав изделия свёрнут, формируемый список развёрнут почти на всю панель
 };
@@ -705,6 +707,7 @@ function selectProduct(id) {
     state.treeRows = [];
     state.cellChecked = {};
     state.cellLU = {};
+    state.cellUD = {};
     renderTree();
     state.generatedList = [{
       compId: state.selectedProductId,
@@ -776,13 +779,15 @@ function rebuildTreeForSelectedProduct() {
     state.treeRows = [];
     state.cellChecked = {};
     state.cellLU = {};
+    state.cellUD = {};
     renderTree();
     return;
   }
   state.treeRows = collectDescendants(state.selectedProductId);
   var cells = {};
   var luCells = {};
-  state.treeRows.forEach(function (row) { cells[row.id] = {}; luCells[row.id] = {}; });
+  var udCells = {};
+  state.treeRows.forEach(function (row) { cells[row.id] = {}; luCells[row.id] = {}; udCells[row.id] = {}; });
   var targetId = (state.searchedComponentId != null) ? state.searchedComponentId : state.selectedProductId;
   var subtreeIds = {};
   collectDescendants(targetId).forEach(function (r) { subtreeIds[r.id] = true; });
@@ -794,6 +799,7 @@ function rebuildTreeForSelectedProduct() {
   });
   state.cellChecked = cells;
   state.cellLU = luCells;
+  state.cellUD = udCells;
   renderTree();
 }
 
@@ -803,6 +809,9 @@ function clearAllChecks() {
   });
   Object.keys(state.cellLU).forEach(function (id) {
     state.cellLU[id] = {};
+  });
+  Object.keys(state.cellUD).forEach(function (id) {
+    state.cellUD[id] = {};
   });
   renderTree();
 }
@@ -847,8 +856,10 @@ function renderTree() {
     if (!comp) return;
     if (!state.cellChecked[row.id]) state.cellChecked[row.id] = {};
     if (!state.cellLU[row.id]) state.cellLU[row.id] = {};
+    if (!state.cellUD[row.id]) state.cellUD[row.id] = {};
     var rowCells = state.cellChecked[row.id];
     var rowLU = state.cellLU[row.id];
+    var rowUD = state.cellUD[row.id];
 
     var tr = document.createElement('tr');
     var tdName = document.createElement('td');
@@ -883,6 +894,17 @@ function renderTree() {
           luBtn.classList.toggle('on', !!rowLU[dt.label]);
         });
         cell.appendChild(luBtn);
+
+        var udBtn = document.createElement('button');
+        udBtn.type = 'button';
+        udBtn.className = 'tm-lu-btn' + (rowUD[dt.label] ? ' on' : '');
+        udBtn.textContent = 'УД';
+        udBtn.title = 'Добавить удостоверяющий лист к этому документу';
+        udBtn.addEventListener('click', function () {
+          rowUD[dt.label] = !rowUD[dt.label];
+          udBtn.classList.toggle('on', !!rowUD[dt.label]);
+        });
+        cell.appendChild(udBtn);
       }
       td.appendChild(cell);
       tr.appendChild(td);
@@ -933,24 +955,26 @@ function collapseGenExpanded() {
 function generateDocList() {
   var pairs = [];
   var luType = DOC_TYPES.filter(function (d) { return d.label === 'ЛУ'; })[0];
+  var udType = DOC_TYPES.filter(function (d) { return d.label === 'УД'; })[0];
   state.treeRows.forEach(function (row) {
     var comp = state.componentsById[row.id];
     if (!comp) return;
     var rowCells = state.cellChecked[row.id] || {};
     var rowLU = state.cellLU[row.id] || {};
+    var rowUD = state.cellUD[row.id] || {};
     DOC_TYPES.forEach(function (dt) {
       if (rowCells[dt.label]) {
         pairs.push({
           compId: row.id,
           code: dt.code,
           label: dt.label,
-          designation: (comp.decimal_number || '') + (dt.label === 'ЛУ' ? '-' : '') + dt.code,
+          designation: (comp.decimal_number || '') + (dt.label === 'ЛУ' || dt.label === 'УД' ? '-' : '') + dt.code,
           format: FORMATS[0],
           formatOther: '',
           sheets: 1
         });
       }
-      // Отдельная кнопка «ЛУ» в ячейке — лист утверждения к КОНКРЕТНОМУ
+      // Отдельные кнопки «ЛУ»/«УД» в ячейке — сопутствующий лист к КОНКРЕТНОМУ
       // документу этого типа, независимо от того, отмечен ли сам чекбокс
       // (документ мог быть зарегистрирован ранее).
       if (rowLU[dt.label] && luType) {
@@ -959,6 +983,17 @@ function generateDocList() {
           code: luType.code,
           label: luType.label,
           designation: (comp.decimal_number || '') + dt.code + '-' + luType.code,
+          format: FORMATS[0],
+          formatOther: '',
+          sheets: 1
+        });
+      }
+      if (rowUD[dt.label] && udType) {
+        pairs.push({
+          compId: row.id,
+          code: udType.code,
+          label: udType.label,
+          designation: (comp.decimal_number || '') + dt.code + '-' + udType.code,
           format: FORMATS[0],
           formatOther: '',
           sheets: 1
