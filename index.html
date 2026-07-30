@@ -149,6 +149,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .gen-empty{padding:14px;text-align:center;color:var(--tx3);font-size:11px}
 .gen-card{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:6px 8px;border-bottom:1px solid var(--brd)}
 .gen-card:last-child{border-bottom:none}
+.gen-card:hover{background:var(--grn-bg)}
 .gen-card-designation{font-family:var(--mono);font-size:11px;color:var(--acc);white-space:nowrap;flex-shrink:0;width:150px;overflow:hidden;text-overflow:ellipsis}
 .gen-card-name{flex:1 1 160px;min-width:160px;font-size:11px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3}
 .gen-card-box{display:flex;align-items:center;gap:5px;height:28px;padding:0 8px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf);flex-shrink:0}
@@ -175,6 +176,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--brd2);border-radius:4pt}
+.tree-col::-webkit-scrollbar{width:12px;height:12px}
 </style>
 </head>
 <body>
@@ -275,7 +277,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.18.0</footer>
+<footer class="ver-footer">v0.19.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -333,7 +335,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 // ЭТ, РЭ) → Т5М/Д («Данные конструкции», нестандартные коды) и ИС в самом
 // конце — по прямой просьбе пользователя разместить Т5М и Д перед ИС.
 var DOC_TYPES = [
-  { code: 'ЧД', label: 'ЧД', fullName: 'Чертёж детали', skipNameSuffix: true, headerText: '/' },
+  { code: '', label: 'ЧД', fullName: 'Чертёж детали', skipNameSuffix: true, headerText: '/' },
   { code: 'СБ', label: 'СБ', fullName: 'Сборочный чертёж' },
   { code: 'ГЧ', label: 'ГЧ', fullName: 'Габаритный чертёж' },
   { code: 'Э2', label: 'Э2', fullName: 'Схема функциональная' },
