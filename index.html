@@ -125,7 +125,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .tree-matrix thead th{position:sticky;top:0;background:var(--surf);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--tx2);border-bottom:2px solid var(--brd);z-index:1}
 .tree-matrix th.tm-name,.tree-matrix td.tm-name{text-align:left;white-space:nowrap;position:sticky;left:0;background:var(--surf);z-index:2;min-width:260px}
 .tree-matrix thead th.tm-name{z-index:3}
-.tree-matrix td.tm-name{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.tm-name-row{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%}
 .tm-name-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .tree-matrix tbody tr:hover td{background:var(--grn-bg)}
 .tree-matrix tbody tr:last-child td{border-bottom:none}
@@ -288,7 +288,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.25.0</footer>
+<footer class="ver-footer">v0.26.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -337,13 +337,14 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 // dt.code). skipNameSuffix у «ЧД» означает, что для конечной детали в
 // «Наименование» тип документа не дописывается (см. nameForItem()).
 //
-// Порядок ниже сгруппирован по разделам классификации: чертежи (ГОСТ 2.102
-// табл.1) → схемы (ГОСТ 2.701, по номеру типа: 1-структурная (Е1, «вид»
-// схемы деления — отдельная буква от Э, но тот же номер типа), 2-функцио-
-// нальная, 3-принципиальная +ПЭ3-компаньон сразу за ней, 4-соединений,
-// 5-подключения) → ЛУ/УД (листы утверждения/удостоверяющие — вне таблиц
-// 2.102, оставлены рядом с текстовыми документами) → текстовые документы
-// (ГОСТ 2.102 табл.3: СП, ВС, Д1, Д4 — Д4 сгруппирован рядом с Д1 как
+// Порядок ниже сгруппирован по разделам классификации: чертежи (ЧД, СП —
+// по прямой просьбе пользователя СП стоит сразу после ЧД, перед СБ; ГОСТ
+// 2.102 табл.1) → схемы (ГОСТ 2.701, по номеру типа: 1-структурная (Е1,
+// «вид» схемы деления — отдельная буква от Э, но тот же номер типа),
+// 2-функциональная, 3-принципиальная +ПЭ3-компаньон сразу за ней,
+// 4-соединений, 5-подключения) → ЛУ/УД (листы утверждения/удостоверяющие —
+// вне таблиц 2.102, оставлены рядом с текстовыми документами) → текстовые
+// документы (ГОСТ 2.102 табл.3: ВС, Д1, Д4 — Д4 сгруппирован рядом с Д1 как
 // документ «Д»-семейства, нестандартный код — ВП, РР1/РР2/РР3-расчёты
 // (идут перед ТУ, как «Расчёт» перед «Технические условия» в табл.3), ТУ)
 // → эксплуатационные документы
@@ -352,6 +353,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 // разместить Т5М и Д перед ИС.
 var DOC_TYPES = [
   { code: '', label: 'ЧД', fullName: 'Чертёж детали', skipNameSuffix: true, headerText: '/' },
+  { code: '', label: 'СП', fullName: 'Спецификация' },
   { code: 'СБ', label: 'СБ', fullName: 'Сборочный чертёж' },
   { code: 'ГЧ', label: 'ГЧ', fullName: 'Габаритный чертёж' },
   { code: 'Е1', label: 'Е1', fullName: 'Схема деления структурная' },
@@ -362,7 +364,6 @@ var DOC_TYPES = [
   { code: 'Э5', label: 'Э5', fullName: 'Схема подключения' },
   { code: 'ЛУ', label: 'ЛУ', fullName: 'Лист утверждения' },
   { code: 'УД', label: 'УД', fullName: 'Удостоверяющий лист' },
-  { code: '', label: 'СП', fullName: 'Спецификация' },
   { code: 'ВС', label: 'ВС', fullName: 'Ведомость спецификаций' },
   { code: 'Д1', label: 'Д1', fullName: 'Ведомость документов' },
   { code: 'Д4', label: 'Д4', fullName: 'Комплект карт для оценки правильности применения электрорадиоизделий' },
@@ -971,7 +972,6 @@ function renderTree() {
     var nm = document.createElement('span');
     nm.className = 'tree-name'; nm.textContent = ' ' + (comp.name || '');
     textWrap.appendChild(dn); textWrap.appendChild(nm);
-    tdName.appendChild(textWrap);
 
     var addExecBtn = document.createElement('button');
     addExecBtn.type = 'button';
@@ -983,7 +983,16 @@ function renderTree() {
       state.pendingExecRowId = (state.pendingExecRowId === row.id) ? null : row.id;
       renderTree();
     });
-    tdName.appendChild(addExecBtn);
+
+    // Flex-обёртка внутри ячейки (не сама td) — td.tm-name должна остаться
+    // обычной table-cell, иначе (display:flex прямо на td) она выпадает из
+    // общей table-layout вертикальной центровки строки и визуально «уезжает»
+    // вверх относительно соседних ячеек той же строки.
+    var nameRow = document.createElement('span');
+    nameRow.className = 'tm-name-row';
+    nameRow.appendChild(textWrap);
+    nameRow.appendChild(addExecBtn);
+    tdName.appendChild(nameRow);
 
     tr.appendChild(tdName);
     columns[0].push(tdName);
