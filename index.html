@@ -125,6 +125,8 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .tree-matrix thead th{position:sticky;top:0;background:var(--surf);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--tx2);border-bottom:2px solid var(--brd);z-index:1}
 .tree-matrix th.tm-name,.tree-matrix td.tm-name{text-align:left;white-space:nowrap;position:sticky;left:0;background:var(--surf);z-index:2;min-width:260px}
 .tree-matrix thead th.tm-name{z-index:3}
+.tree-matrix td.tm-name{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.tm-name-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .tree-matrix tbody tr:hover td{background:var(--grn-bg)}
 .tree-matrix tbody tr:last-child td{border-bottom:none}
 .tree-dn{font-family:var(--mono);font-size:12px;color:var(--acc)}
@@ -135,6 +137,15 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .tm-lu-btn:hover{border-color:var(--acc)}
 .tm-lu-btn.on{background:var(--acc);border-color:var(--acc);color:#fff}
 .tree-matrix tbody td.tm-col-hover,.tree-matrix thead th.tm-col-hover{background:var(--grn-bg)}
+
+.tm-add-exec-btn{display:flex;align-items:center;justify-content:center;width:16px;height:16px;flex-shrink:0;border:1px solid var(--grn-brd);border-radius:3px;background:var(--grn-bg);color:var(--grn);cursor:pointer;padding:0;transition:all .12s}
+.tm-add-exec-btn:hover,.tm-add-exec-btn.on{background:var(--grn);color:#fff;border-color:var(--grn)}
+.tm-exec-draft td{padding:0;background:var(--surf2)}
+.tm-exec-draft-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 8px}
+.tm-exec-dn{font-family:var(--mono);font-size:12px;color:var(--acc);white-space:nowrap}
+.tm-exec-input{width:70px;height:24px;border:1px solid var(--brd);border-radius:var(--r);padding:0 6px;font-family:var(--mono);font-size:11px;outline:none;background:var(--surf)}
+.tm-exec-input:focus{border-color:var(--acc)}
+.tm-exec-actions{display:flex;gap:4px}
 
 .gen-transfer{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;align-self:stretch;margin-left:auto}
 .gen-transfer .icon-btn{flex-shrink:0}
@@ -277,7 +288,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.23.0</footer>
+<footer class="ver-footer">v0.24.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -402,7 +413,10 @@ var state = {
   cellLU: {},            // componentId -> { docTypeLabel -> true } — companion "-ЛУ" toggle per cell
   cellUD: {},            // componentId -> { docTypeLabel -> true } — companion "-УД" toggle per cell
   generatedList: [],     // [{compId, code, label, designation, format, formatOther, sheets}, ...] queued for bulk registration
-  genExpanded: false      // true = состав изделия свёрнут, формируемый список развёрнут почти на всю панель
+  genExpanded: false,     // true = состав изделия свёрнут, формируемый список развёрнут почти на всю панель
+
+  execCounter: 0,         // счётчик для уникальных id вручную добавленных исполнений (exec:<originId>:<n>)
+  pendingExecRowId: null  // id строки, для которой сейчас открыта строка-черновик ввода исполнения
 };
 
 function setConn(ok, label) {
@@ -745,6 +759,7 @@ function selectProduct(id) {
     state.cellChecked = {};
     state.cellLU = {};
     state.cellUD = {};
+    state.pendingExecRowId = null;
     renderTree();
     state.generatedList = [{
       compId: id,
@@ -811,7 +826,47 @@ function defaultCodesForRow(row) {
   return hasChildren ? DEFAULT_CODES_ASSEMBLY : DEFAULT_CODES_LEAF;
 }
 
+// Пользователь вручную добавляет исполнение к любой строке состава (деталь
+// или сборка) — просто вписывает номер исполнения, без автосчётчика.
+// Обозначение = <децимальный номер строки-источника>-<исполнение>. Строка
+// исполнения не является узлом реального BOM-дерева (childrenByParent её не
+// знает), поэтому «своя» роль по умолчанию для неё всегда была бы «деталь»
+// (нет детей) — вместо этого чекбоксы по умолчанию КОПИРУЮТСЯ из роли
+// строки-источника (defaultCodesForRow(row), т.е. изделие/сборка/деталь —
+// как и было прямо запрошено: «все чекбоксы для исполнения подчиняются
+// правилам как и у того, откуда взялось исполнение»). Кнопки ЛУ/УД в ячейках
+// уже одинаковы для всех строк одного столбца — копировать отдельно не нужно.
+function addExecutionRow(row, comp, execValue) {
+  state.execCounter = (state.execCounter || 0) + 1;
+  var execId = 'exec:' + row.id + ':' + state.execCounter;
+  state.componentsById[execId] = {
+    id: execId,
+    rawId: comp.rawId,
+    source: comp.source,
+    name: comp.name,
+    primary_use: comp.primary_use,
+    decimal_number: (comp.decimal_number || '') + '-' + execValue,
+    org_prefix: comp.org_prefix,
+    serial: comp.serial
+  };
+
+  var startIdx = state.treeRows.findIndex(function (r) { return r.id === row.id; });
+  var insertIdx = startIdx + 1;
+  while (insertIdx < state.treeRows.length && state.treeRows[insertIdx].depth > row.depth) insertIdx++;
+  state.treeRows.splice(insertIdx, 0, { id: execId, depth: row.depth });
+
+  var execCells = {};
+  defaultCodesForRow(row).forEach(function (c) { execCells[c] = true; });
+  state.cellChecked[execId] = execCells;
+  state.cellLU[execId] = {};
+  state.cellUD[execId] = {};
+
+  state.pendingExecRowId = null;
+  renderTree();
+}
+
 function rebuildTreeForSelectedProduct() {
+  state.pendingExecRowId = null;
   if (!state.selectedProductId || !state.componentsLoaded) {
     state.treeRows = [];
     state.cellChecked = {};
@@ -906,11 +961,27 @@ function renderTree() {
     var tdName = document.createElement('td');
     tdName.className = 'tm-name';
     tdName.style.paddingLeft = (6 + row.depth * 16) + 'px';
+    var textWrap = document.createElement('span');
+    textWrap.className = 'tm-name-text';
     var dn = document.createElement('span');
     dn.className = 'tree-dn'; dn.textContent = comp.decimal_number || '';
     var nm = document.createElement('span');
     nm.className = 'tree-name'; nm.textContent = ' ' + (comp.name || '');
-    tdName.appendChild(dn); tdName.appendChild(nm);
+    textWrap.appendChild(dn); textWrap.appendChild(nm);
+    tdName.appendChild(textWrap);
+
+    var addExecBtn = document.createElement('button');
+    addExecBtn.type = 'button';
+    addExecBtn.className = 'tm-add-exec-btn' + (state.pendingExecRowId === row.id ? ' on' : '');
+    addExecBtn.title = 'Добавить исполнение';
+    addExecBtn.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M5 12h14"/></svg>';
+    addExecBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      state.pendingExecRowId = (state.pendingExecRowId === row.id) ? null : row.id;
+      renderTree();
+    });
+    tdName.appendChild(addExecBtn);
+
     tr.appendChild(tdName);
     columns[0].push(tdName);
 
@@ -953,6 +1024,60 @@ function renderTree() {
     });
 
     tbody.appendChild(tr);
+
+    if (state.pendingExecRowId === row.id) {
+      var draftTr = document.createElement('tr');
+      draftTr.className = 'tm-exec-draft';
+      var draftTd = document.createElement('td');
+      draftTd.colSpan = DOC_TYPES.length + 1;
+      var draftRowWrap = document.createElement('div');
+      draftRowWrap.className = 'tm-exec-draft-row';
+      draftRowWrap.style.paddingLeft = (6 + (row.depth + 1) * 16) + 'px';
+
+      var dnLabel = document.createElement('span');
+      dnLabel.className = 'tm-exec-dn';
+      dnLabel.textContent = (comp.decimal_number || '') + '-';
+      draftRowWrap.appendChild(dnLabel);
+
+      var execInput = document.createElement('input');
+      execInput.className = 'tm-exec-input';
+      execInput.type = 'text';
+      execInput.inputMode = 'numeric';
+      execInput.placeholder = 'исполнение';
+      execInput.autocomplete = 'off';
+      execInput.addEventListener('input', function () {
+        execInput.value = execInput.value.replace(/[^0-9]/g, '');
+      });
+      draftRowWrap.appendChild(execInput);
+
+      var draftActions = document.createElement('span');
+      draftActions.className = 'tm-exec-actions';
+      var confirmBtn = iconButton('cell-edit-btn save', checkSvg(), 'Добавить исполнение в состав');
+      var cancelExecBtn = iconButton('cell-edit-btn cancel', xSvg(), 'Отмена');
+      draftActions.appendChild(confirmBtn);
+      draftActions.appendChild(cancelExecBtn);
+      draftRowWrap.appendChild(draftActions);
+
+      draftTd.appendChild(draftRowWrap);
+      draftTr.appendChild(draftTd);
+      tbody.appendChild(draftTr);
+
+      function commitExecution() {
+        var val = execInput.value.trim();
+        if (!val) { execInput.focus(); return; }
+        addExecutionRow(row, comp, val);
+      }
+      confirmBtn.addEventListener('click', commitExecution);
+      cancelExecBtn.addEventListener('click', function () {
+        state.pendingExecRowId = null;
+        renderTree();
+      });
+      execInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') commitExecution();
+        else if (e.key === 'Escape') { state.pendingExecRowId = null; renderTree(); }
+      });
+      setTimeout(function () { execInput.focus(); }, 0);
+    }
   });
   table.appendChild(tbody);
 
