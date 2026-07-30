@@ -275,7 +275,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.16.0</footer>
+<footer class="ver-footer">v0.17.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -316,13 +316,17 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 
 // fullName defaults are best-effort ЕСКД (ГОСТ 2.102) expansions — verify and correct
 // via Настройки → «Названия типов документов», the widget only reads them from there.
-// Децимальный номер без буквенного суффикса обозначает и деталь (Д), и
-// спецификацию (СП) — оба типа сознательно имеют code:'', поэтому далее
-// везде используется dt.label как уникальный ключ (не dt.code). skipNameSuffix
-// у «Д» означает, что для конечной детали в «Наименование» тип документа не
-// дописывается (см. nameForItem()).
+// Чертёж детали раньше кодировался буквой «Д»; теперь его код/label — «ЧД»
+// (заголовок столбца — просто «/», см. headerText), а буква «Д» освобождена
+// под отдельный тип «Данные конструкции». Децимальный номер без буквенного
+// суффикса теперь означает «ЧД» и спецификацию (СП) — оба сознательно имеют
+// code:'', поэтому везде используется dt.label как уникальный ключ (не
+// dt.code). skipNameSuffix у «ЧД» означает, что для конечной детали в
+// «Наименование» тип документа не дописывается (см. nameForItem()).
 var DOC_TYPES = [
-  { code: '', label: 'Д', fullName: 'Чертёж детали', skipNameSuffix: true },
+  { code: 'ЧД', label: 'ЧД', fullName: 'Чертёж детали', skipNameSuffix: true, headerText: '/' },
+  { code: 'Д', label: 'Д', fullName: 'Данные конструкции' },
+  { code: 'Т5М', label: 'Т5М', fullName: 'Данные конструкции' },
   { code: 'ЛУ', label: 'ЛУ', fullName: 'Лист утверждения' },
   { code: 'УД', label: 'УД', fullName: 'Удостоверяющий лист' },
   { code: '', label: 'СП', fullName: 'Спецификация' },
@@ -762,11 +766,11 @@ function collectDescendants(rootId) {
 
 // Default checked doc-type columns (by label) per component role in the BOM
 // hierarchy. Узел сборки (has children, incl. the top-level product itself)
-// never gets "Д" — a part can't be something other components are nested
-// under; only a childless row is a "деталь".
+// never gets "ЧД" (чертёж детали) — a part can't be something other
+// components are nested under; only a childless row is a "деталь".
 var DEFAULT_CODES_TOP = ['СП', 'СБ', 'ГЧ', 'ТУ', 'РЭ', 'Д1', 'ПС', 'ВЭ', 'Э4', 'Э5'];
 var DEFAULT_CODES_ASSEMBLY = ['СП', 'СБ', 'ВП'];
-var DEFAULT_CODES_LEAF = ['Д'];
+var DEFAULT_CODES_LEAF = ['ЧД'];
 
 function defaultCodesForRow(row) {
   if (row.depth === 0) return DEFAULT_CODES_TOP;
@@ -847,7 +851,7 @@ function renderTree() {
   DOC_TYPES.forEach(function (dt, i) {
     var th = document.createElement('th');
     th.className = 'tm-cb';
-    th.textContent = dt.label;
+    th.textContent = dt.headerText || dt.label;
     headRow.appendChild(th);
     columns[i + 1].push(th);
   });
@@ -887,7 +891,7 @@ function renderTree() {
       cb.checked = !!rowCells[dt.label];
       cb.addEventListener('change', function () { rowCells[dt.label] = cb.checked; });
       cell.appendChild(cb);
-      if (dt.label !== 'Д' && dt.label !== 'СП') {
+      if (dt.label !== 'ЧД' && dt.label !== 'СП') {
         var luBtn = document.createElement('button');
         luBtn.type = 'button';
         luBtn.className = 'tm-lu-btn' + (rowLU[dt.label] ? ' on' : '');
