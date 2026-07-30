@@ -277,7 +277,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.21.0</footer>
+<footer class="ver-footer">v0.22.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -598,10 +598,18 @@ function loadComponents() {
     // merged into the same search space as standalone, childless nodes
     // (namespaced ids so they can never collide with a real Components id,
     // and are never added to childrenByParent so they don't join any tree).
+    // primary_use у них, в отличие от версии до v0.22.0, ЧИТАЕТСЯ из
+    // исходного столбца таблицы (ссылается на id строки в основной Components,
+    // как и у обычных компонентов) — используется только для того, чтобы
+    // findTopLevelId() мог подтянуть настоящее изделие/наименование изделия
+    // (ProductName/Product при регистрации), а не для встраивания в дерево
+    // состава: childrenByParent по-прежнему не пополняется этими id, поэтому
+    // собственного дерева у них как не было, так и нет.
     function addStandalone(table, prefix, source, numberFieldNames) {
       if (!table) return;
       var col = makeColGetter(table);
-      var tName = col('name'), tDn = col(numberFieldNames), tOrg = col('org_prefix'), tSerial = col('serial');
+      var tName = col('name'), tDn = col(numberFieldNames), tOrg = col('org_prefix'), tSerial = col('serial'),
+          tPrimary = col('primary_use');
       var ids = table.id || [];
       ids.forEach(function (id, i2) {
         var nsId = prefix + id;
@@ -610,7 +618,7 @@ function loadComponents() {
           rawId: id,
           source: source,
           name: tName ? tName[i2] : '',
-          primary_use: 0,
+          primary_use: tPrimary ? tPrimary[i2] : 0,
           decimal_number: tDn ? tDn[i2] : '',
           org_prefix: tOrg ? tOrg[i2] : '',
           serial: tSerial ? tSerial[i2] : ''
@@ -712,6 +720,11 @@ function findTopLevelId(id) {
 // ESPD/ESTD-sourced items have no BOM and no деталь/сборка roles to pick
 // document types for — each such item IS one document already. Skip the
 // tree/checkbox step entirely and drop it straight into the generated list.
+// Стандэлон-режим определяется ИСТОЧНИКОМ найденного элемента (comp.source),
+// а не источником подтянутого через primary_use изделия — иначе, как только
+// у ESPD/ESTD-элемента появляется настоящее primary_use (см. addStandalone),
+// findTopLevelId() поднимает state.selectedProductId до реальной сборки из
+// Components, и режим ошибочно переключился бы на полное дерево состава.
 function selectProduct(id) {
   state.selectedProductId = findTopLevelId(id);
   state.searchedComponentId = id;
@@ -720,18 +733,17 @@ function selectProduct(id) {
   fProductInput.value = comp ? (comp.decimal_number || '') : ('#' + id);
   fProductDrop.classList.remove('on');
 
-  var topComp = state.componentsById[state.selectedProductId];
-  if (topComp && topComp.source !== 'cmp') {
+  if (comp && comp.source !== 'cmp') {
     state.treeRows = [];
     state.cellChecked = {};
     state.cellLU = {};
     state.cellUD = {};
     renderTree();
     state.generatedList = [{
-      compId: state.selectedProductId,
+      compId: id,
       code: '',
       label: '',
-      designation: topComp.decimal_number || '',
+      designation: comp.decimal_number || '',
       format: FORMATS[0],
       formatOther: '',
       sheets: 1
@@ -957,8 +969,10 @@ function renderTree() {
 
 function updateBomPanelVisibility() {
   document.getElementById('bomPanel').style.display = state.selectedProductId ? '' : 'none';
-  var topComp = state.componentsById[state.selectedProductId];
-  var standalone = !!(topComp && topComp.source !== 'cmp');
+  // По источнику НАЙДЕННОГО элемента (searchedComponentId), а не подтянутого
+  // через primary_use изделия — та же причина, что и в selectProduct().
+  var searchedComp = state.componentsById[state.searchedComponentId];
+  var standalone = !!(searchedComp && searchedComp.source !== 'cmp');
   var layout = document.querySelector('.tree-layout');
   layout.classList.toggle('standalone', standalone);
   layout.classList.toggle('gen-expanded', !standalone && !!state.genExpanded);
