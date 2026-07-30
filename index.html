@@ -275,7 +275,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.15.0</footer>
+<footer class="ver-footer">v0.16.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -792,7 +792,11 @@ function rebuildTreeForSelectedProduct() {
   var subtreeIds = {};
   collectDescendants(targetId).forEach(function (r) { subtreeIds[r.id] = true; });
   state.treeRows.forEach(function (row) {
-    if (!subtreeIds[row.id]) return;
+    // Корень (изделие верхнего уровня) получает свои дефолтные отметки
+    // всегда, независимо от того, какой узел был найден поиском — иначе
+    // при переходе к вложенной детали галочки у самой сборки пропадают,
+    // хотя строка сборки всё равно видна в дереве.
+    if (row.depth !== 0 && !subtreeIds[row.id]) return;
     var rowCells = {};
     defaultCodesForRow(row).forEach(function (c) { rowCells[c] = true; });
     cells[row.id] = rowCells;
