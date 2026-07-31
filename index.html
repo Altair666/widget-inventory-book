@@ -288,7 +288,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.27.0</footer>
+<footer class="ver-footer">v0.28.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -1121,6 +1121,17 @@ function updateBomPanelVisibility() {
   layout.classList.toggle('standalone', standalone);
   layout.classList.toggle('gen-expanded', !standalone && !!state.genExpanded);
   layout.classList.toggle('gen-collapsed', !standalone && !state.genExpanded);
+  updateRegisterButtonState();
+}
+
+// «Зарегистрировать документы» относится к сформированному списку (после
+// переноса «»» из состава изделия), а не к самому составу — пока виден
+// состав изделия (genExpanded=false) или перенесённый список пуст, кнопка
+// серая/неактивная, чтобы не провоцировать клик до переноса.
+function updateRegisterButtonState() {
+  var btn = document.getElementById('btnRegisterBatch');
+  if (!btn) return;
+  btn.disabled = !state.genExpanded || !state.generatedList.length;
 }
 
 // Сворачивает формируемый список обратно, возвращает состав изделия на всю
