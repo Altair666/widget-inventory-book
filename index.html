@@ -288,7 +288,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.29.0</footer>
+<footer class="ver-footer">v0.30.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -762,15 +762,12 @@ function selectProduct(id) {
     state.cellUD = {};
     state.pendingExecRowId = null;
     renderTree();
-    state.generatedList = [{
+    state.generatedList = [Object.assign({
       compId: id,
       code: '',
       label: '',
-      designation: comp.decimal_number || '',
-      format: FORMATS[0],
-      formatOther: '',
-      sheets: 1
-    }];
+      designation: comp.decimal_number || ''
+    }, defaultsForNewVersion(comp.decimal_number || ''))];
   } else {
     state.generatedList = [];
     rebuildTreeForSelectedProduct();
@@ -1160,40 +1157,34 @@ function generateDocList() {
     var rowUD = state.cellUD[row.id] || {};
     DOC_TYPES.forEach(function (dt) {
       if (rowCells[dt.label]) {
-        pairs.push({
+        var dsg1 = (comp.decimal_number || '') + (dt.label === 'ЛУ' || dt.label === 'УД' ? '-' : '') + dt.code;
+        pairs.push(Object.assign({
           compId: row.id,
           code: dt.code,
           label: dt.label,
-          designation: (comp.decimal_number || '') + (dt.label === 'ЛУ' || dt.label === 'УД' ? '-' : '') + dt.code,
-          format: FORMATS[0],
-          formatOther: '',
-          sheets: 1
-        });
+          designation: dsg1
+        }, defaultsForNewVersion(dsg1)));
       }
       // Отдельные кнопки «ЛУ»/«УД» в ячейке — сопутствующий лист к КОНКРЕТНОМУ
       // документу этого типа, независимо от того, отмечен ли сам чекбокс
       // (документ мог быть зарегистрирован ранее).
       if (rowLU[dt.label] && luType) {
-        pairs.push({
+        var dsg2 = (comp.decimal_number || '') + dt.code + '-' + luType.code;
+        pairs.push(Object.assign({
           compId: row.id,
           code: luType.code,
           label: luType.label,
-          designation: (comp.decimal_number || '') + dt.code + '-' + luType.code,
-          format: FORMATS[0],
-          formatOther: '',
-          sheets: 1
-        });
+          designation: dsg2
+        }, defaultsForNewVersion(dsg2)));
       }
       if (rowUD[dt.label] && udType) {
-        pairs.push({
+        var dsg3 = (comp.decimal_number || '') + dt.code + '-' + udType.code;
+        pairs.push(Object.assign({
           compId: row.id,
           code: udType.code,
           label: udType.label,
-          designation: (comp.decimal_number || '') + dt.code + '-' + udType.code,
-          format: FORMATS[0],
-          formatOther: '',
-          sheets: 1
-        });
+          designation: dsg3
+        }, defaultsForNewVersion(dsg3)));
       }
     });
   });
@@ -1479,6 +1470,35 @@ function computeNextChangeNumber(designation) {
   if (!designation) return '—';
   var key = String(designation);
   return (key in state.changeNumberFloor) ? state.changeNumberFloor[key] + 1 : 0;
+}
+
+// Формат и кол-во листов новой версии документа подтягиваются из последней
+// зарегистрированной версии с тем же обозначением (простое исправление
+// обычно не меняет ни то, ни другое) — но остаются обычными полями формы,
+// которые можно поправить вручную, если документ дополнен и листов стало
+// больше (или изменился формат).
+function latestRecordForDesignation(designation) {
+  if (!designation) return null;
+  var key = String(designation);
+  var best = null, bestN = -1;
+  state.records.forEach(function (r) {
+    if (String(r.DocumentDesignation) !== key) return;
+    var n = parseInt(String(r.ChangeNumber || '0').replace(/[^0-9]/g, ''), 10) || 0;
+    if (n > bestN) { bestN = n; best = r; }
+  });
+  return best;
+}
+
+function defaultsForNewVersion(designation) {
+  var prev = latestRecordForDesignation(designation);
+  if (!prev) return { format: FORMATS[0], formatOther: '', sheets: 1 };
+  var fmt = prev.Format || '';
+  var known = FORMATS.indexOf(fmt) !== -1;
+  return {
+    format: known ? fmt : (fmt ? FORMAT_OTHER : FORMATS[0]),
+    formatOther: known ? '' : fmt,
+    sheets: prev.Sheets || 1
+  };
 }
 
 function updateComputedFields() {
