@@ -288,7 +288,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.30.0</footer>
+<footer class="ver-footer">v0.31.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -680,14 +680,59 @@ function orgPrefixFor(comp) {
 var fProductInput = document.getElementById('fProductInput');
 var fProductDrop = document.getElementById('fProductDrop');
 
+// Позволяет найти УЖЕ существующий по обозначению документ прямо по полному
+// обозначению (напр. «лмап.402131.009РЭ»), даже если сам документ не заведён
+// отдельной строкой в Components/ESTD/ESPD — только зарегистрирован ранее в
+// реестре (Inventory_book). Каждой такой находке присваивается псевдо-id
+// вида 'doc:<обозначение>' с source:'doc'; при выборе она попадает в тот же
+// standalone-путь в selectProduct(), что и ESTD/ESPD (comp.source !== 'cmp'),
+// т.е. сразу добавляется как одна новая версия документа, минуя дерево
+// состава — переносить/отмечать чекбоксы для неё не нужно.
+function searchExistingDocuments(q, excludeDn) {
+  if (!q) return [];
+  var seen = {};
+  var out = [];
+  state.records.forEach(function (r) {
+    var dn = String(r.DocumentDesignation || '');
+    if (!dn) return;
+    var key = dn.toLowerCase();
+    if (excludeDn[key] || seen[key]) return;
+    if (key.indexOf(q) === -1) return;
+    seen[key] = true;
+    var pseudo = {
+      id: 'doc:' + dn,
+      rawId: r.Product || 0,
+      source: 'doc',
+      name: r.ProductName || '',
+      primary_use: r.Product || 0,
+      decimal_number: dn,
+      org_prefix: '',
+      serial: '',
+      presetLabel: r.DocTypeCode || '',
+      presetName: r.Name || ''
+    };
+    // Регистрируем в общей карте компонентов, чтобы selectProduct(id) и
+    // findTopLevelId(id) могли найти этот псевдо-компонент по id так же,
+    // как обычный компонент/ESTD/ESPD-запись.
+    state.componentsById[pseudo.id] = pseudo;
+    out.push(pseudo);
+  });
+  return out;
+}
+
 function searchComponents(q) {
   var list = Object.keys(state.componentsById).map(function (id) { return state.componentsById[id]; });
+  var excludeDn = {};
+  list.forEach(function (c) {
+    if (c.decimal_number) excludeDn[String(c.decimal_number).toLowerCase()] = true;
+  });
   if (q) {
     list = list.filter(function (c) {
       return (c.decimal_number || '').toLowerCase().indexOf(q) !== -1 ||
              (c.name || '').toLowerCase().indexOf(q) !== -1;
     });
   }
+  list = list.concat(searchExistingDocuments(q, excludeDn));
   return list.slice(0, 40);
 }
 
@@ -710,7 +755,7 @@ function onProductInput() {
     var code = document.createElement('span');
     code.className = 'ac-code'; code.textContent = c.decimal_number || '';
     var name = document.createElement('span');
-    name.className = 'ac-name'; name.textContent = c.name || '';
+    name.className = 'ac-name'; name.textContent = c.presetName || c.name || '';
     item.appendChild(code); item.appendChild(name);
     item.addEventListener('mousedown', function (e) {
       e.preventDefault();
@@ -762,12 +807,17 @@ function selectProduct(id) {
     state.cellUD = {};
     state.pendingExecRowId = null;
     renderTree();
-    state.generatedList = [Object.assign({
+    var newItem = Object.assign({
       compId: id,
       code: '',
-      label: '',
+      label: comp.source === 'doc' ? (comp.presetLabel || '') : '',
       designation: comp.decimal_number || ''
-    }, defaultsForNewVersion(comp.decimal_number || ''))];
+    }, defaultsForNewVersion(comp.decimal_number || ''));
+    // 'doc:' — документ найден по уже существующему обозначению (см.
+    // searchExistingDocuments), а не по строке номенклатуры: готовое имя
+    // берём из его прошлой регистрации, а не пересобираем из top/name.
+    if (comp.source === 'doc' && comp.presetName) newItem.presetName = comp.presetName;
+    state.generatedList = [newItem];
   } else {
     state.generatedList = [];
     rebuildTreeForSelectedProduct();
@@ -1206,6 +1256,12 @@ function generateDocList() {
 // не дописывается вовсе. Если отмеченная строка — само изделие верхнего
 // уровня, имя не дублируется («ГКВ-10.ГКВ-10» не нужно).
 function nameForItem(item) {
+  // Документ, найденный по уже существующему обозначению (см. selectExistingDocument),
+  // не привязан к конкретной строке номенклатуры — берём готовое наименование
+  // из предыдущей регистрации этого обозначения, а не пересобираем его из
+  // топ-изделия/decimal_number (для вложенного узла состав этих частей
+  // заранее неизвестен).
+  if (item.presetName != null) return item.presetName;
   var topComp = state.componentsById[state.selectedProductId];
   var topName = topComp ? topComp.name : '';
   var nodeComp = state.componentsById[item.compId];
