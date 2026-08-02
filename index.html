@@ -288,7 +288,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.31.0</footer>
+<footer class="ver-footer">v0.32.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -688,6 +688,34 @@ var fProductDrop = document.getElementById('fProductDrop');
 // standalone-путь в selectProduct(), что и ESTD/ESPD (comp.source !== 'cmp'),
 // т.е. сразу добавляется как одна новая версия документа, минуя дерево
 // состава — переносить/отмечать чекбоксы для неё не нужно.
+// Отрезает от полного обозначения документа код типа документа (напр. «РЭ»,
+// либо «-ЛУ»/«-УД» для сопутствующих листов), чтобы получить decimal_number
+// самой детали/сборки, которой принадлежит документ — обратная операция к
+// сборке designation в generateDocList().
+function stemForDocDesignation(designation, label) {
+  var full = String(designation || '');
+  var dtEntry = DOC_TYPES.filter(function (d) { return d.label === label; })[0];
+  if (!dtEntry) return full;
+  var suffix = ((label === 'ЛУ' || label === 'УД') ? '-' : '') + (dtEntry.code || '');
+  if (suffix && full.length > suffix.length &&
+      full.slice(-suffix.length).toLowerCase() === suffix.toLowerCase()) {
+    return full.slice(0, full.length - suffix.length);
+  }
+  return full;
+}
+
+function findComponentByDecimalNumber(dn) {
+  if (!dn) return null;
+  var key = String(dn).toLowerCase();
+  var ids = Object.keys(state.componentsById);
+  for (var i = 0; i < ids.length; i++) {
+    var c = state.componentsById[ids[i]];
+    if (c.source === 'doc') continue;
+    if (String(c.decimal_number || '').toLowerCase() === key) return c;
+  }
+  return null;
+}
+
 function searchExistingDocuments(q, excludeDn) {
   if (!q) return [];
   var seen = {};
@@ -699,12 +727,21 @@ function searchExistingDocuments(q, excludeDn) {
     if (excludeDn[key] || seen[key]) return;
     if (key.indexOf(q) === -1) return;
     seen[key] = true;
+    // Привязку к изделию определяем по ЖИВОЙ номенклатуре (та же деталь/
+    // сборка, к которой относится документ, ищется по её собственному
+    // decimal_number среди актуальных Components/ESTD/ESPD), а не по когда-то
+    // сохранённой ссылке Product в самой записи реестра — так регистрация
+    // новой версии привязывается к изделию, даже если у старой записи Product
+    // не был проставлен (или устарел). Если своя строка номенклатуры не
+    // найдена — используем сохранённый Product как резервный вариант.
+    var stemComp = findComponentByDecimalNumber(stemForDocDesignation(dn, r.DocTypeCode));
+    var linkId = stemComp ? stemComp.id : (r.Product || 0);
     var pseudo = {
       id: 'doc:' + dn,
       rawId: r.Product || 0,
       source: 'doc',
       name: r.ProductName || '',
-      primary_use: r.Product || 0,
+      primary_use: linkId,
       decimal_number: dn,
       org_prefix: '',
       serial: '',
