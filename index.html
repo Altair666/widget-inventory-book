@@ -288,7 +288,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.33.0</footer>
+<footer class="ver-footer">v0.34.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -704,6 +704,26 @@ function stemForDocDesignation(designation, label) {
   return full;
 }
 
+// Grist-плагин отдаёт для Product/ProductName либо числовой id ссылки (как
+// REST API), либо, при настроенном displayCol/visibleCol у Reference-
+// колонки, уже подставленный текст (decimal_number для Product, name для
+// ProductName) — это разные форматы для одного и того же значения в
+// зависимости от того, как именно виджет получил запись. Приводим к
+// настоящему числовому id компонента через уже загруженную номенклатуру,
+// чтобы вся остальная логика (поиск изделия, привязка в дереве, запись
+// новых записей) всегда работала с id, а не с текстом.
+function resolveRefId(v, byField) {
+  if (v === null || v === undefined || v === '') return 0;
+  if (typeof v === 'number') return v;
+  var ids = Object.keys(state.componentsById);
+  for (var i = 0; i < ids.length; i++) {
+    var c = state.componentsById[ids[i]];
+    if (c.source !== 'cmp') continue;
+    if (String(c[byField] || '') === String(v)) return c.rawId;
+  }
+  return 0;
+}
+
 function findComponentByDecimalNumber(dn) {
   if (!dn) return null;
   var key = String(dn).toLowerCase();
@@ -734,12 +754,14 @@ function searchExistingDocuments(q, excludeDn) {
     // новой версии привязывается к изделию, даже если у старой записи Product
     // не был проставлен (или устарел). Если своя строка номенклатуры не
     // найдена — используем сохранённый Product как резервный вариант.
+    var productId = resolveRefId(r.Product, 'decimal_number');
+    var productNameId = resolveRefId(r.ProductName, 'name');
     var stemComp = findComponentByDecimalNumber(stemForDocDesignation(dn, r.DocTypeCode));
-    var linkId = stemComp ? stemComp.id : (r.Product || 0);
-    var pnameComp = state.componentsById[r.ProductName];
+    var linkId = stemComp ? stemComp.id : productId;
+    var pnameComp = state.componentsById[productNameId];
     var pseudo = {
       id: 'doc:' + dn,
-      rawId: r.Product || 0,
+      rawId: productId,
       source: 'doc',
       name: pnameComp ? pnameComp.name : '',
       primary_use: linkId,
@@ -1624,9 +1646,13 @@ var regFilterInput = document.getElementById('regFilterInput');
 var editingId = null;
 
 function productLabelForRecord(r) {
-  var comp = state.componentsById[r.ProductName] || state.componentsById[r.Product];
+  var productNameId = resolveRefId(r.ProductName, 'name');
+  var productId = resolveRefId(r.Product, 'decimal_number');
+  var comp = state.componentsById[productNameId] || state.componentsById[productId];
   if (comp) return comp.name;
-  var refId = r.ProductName || r.Product;
+  if (typeof r.ProductName === 'string' && r.ProductName) return r.ProductName;
+  if (typeof r.Product === 'string' && r.Product) return r.Product;
+  var refId = productNameId || productId;
   return refId ? ('#' + refId) : '';
 }
 
