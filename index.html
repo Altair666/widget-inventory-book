@@ -288,7 +288,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.32.0</footer>
+<footer class="ver-footer">v0.33.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -736,11 +736,12 @@ function searchExistingDocuments(q, excludeDn) {
     // найдена — используем сохранённый Product как резервный вариант.
     var stemComp = findComponentByDecimalNumber(stemForDocDesignation(dn, r.DocTypeCode));
     var linkId = stemComp ? stemComp.id : (r.Product || 0);
+    var pnameComp = state.componentsById[r.ProductName];
     var pseudo = {
       id: 'doc:' + dn,
       rawId: r.Product || 0,
       source: 'doc',
-      name: r.ProductName || '',
+      name: pnameComp ? pnameComp.name : '',
       primary_use: linkId,
       decimal_number: dn,
       org_prefix: '',
@@ -1488,7 +1489,7 @@ function registerGeneratedDocs() {
           InventoryNumber: invNumber,
           IssueDate: inputValueToDate(dateVal),
           Product: (topComp && topComp.source === 'cmp') ? topComp.rawId : 0,
-          ProductName: topComp ? topComp.name : '',
+          ProductName: (topComp && topComp.source === 'cmp') ? topComp.rawId : 0,
           DocumentDesignation: item.designation,
           DocTypeCode: item.label,
           Sheets: item.sheets,
@@ -1623,9 +1624,10 @@ var regFilterInput = document.getElementById('regFilterInput');
 var editingId = null;
 
 function productLabelForRecord(r) {
-  if (r.ProductName) return r.ProductName;
-  var comp = state.componentsById[r.Product];
-  return comp ? comp.name : (r.Product ? ('#' + r.Product) : '');
+  var comp = state.componentsById[r.ProductName] || state.componentsById[r.Product];
+  if (comp) return comp.name;
+  var refId = r.ProductName || r.Product;
+  return refId ? ('#' + refId) : '';
 }
 
 function renderRegistry() {
