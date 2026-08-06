@@ -288,7 +288,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.34.0</footer>
+<footer class="ver-footer">v0.35.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -1268,12 +1268,17 @@ function generateDocList() {
     DOC_TYPES.forEach(function (dt) {
       if (rowCells[dt.label]) {
         var dsg1 = (comp.decimal_number || '') + (dt.label === 'ЛУ' || dt.label === 'УД' ? '-' : '') + dt.code;
+        // Т5М — это zip-архив, а не чертёж/документ на листах, у него нет
+        // формата листа (А4/А3/...), поэтому формат принудительно "-".
+        var defaults1 = dt.label === 'Т5М'
+          ? Object.assign(defaultsForNewVersion(dsg1), { format: FORMAT_OTHER, formatOther: '-' })
+          : defaultsForNewVersion(dsg1);
         pairs.push(Object.assign({
           compId: row.id,
           code: dt.code,
           label: dt.label,
           designation: dsg1
-        }, defaultsForNewVersion(dsg1)));
+        }, defaults1));
       }
       // Отдельные кнопки «ЛУ»/«УД» в ячейке — сопутствующий лист к КОНКРЕТНОМУ
       // документу этого типа, независимо от того, отмечен ли сам чекбокс
@@ -1504,7 +1509,8 @@ function registerGeneratedDocs() {
 
       var format = item.format === FORMAT_OTHER ? item.formatOther.trim() : item.format;
       var name = nameForItem(item);
-      var fileName = item.designation.replace(/\s+/g, '') + '_изм' + pad2(changeNumber) + '.pdf';
+      var ext = item.label === 'Т5М' ? '.zip' : '.pdf';
+      var fileName = item.designation.replace(/\s+/g, '') + '_изм' + pad2(changeNumber) + ext;
 
       return {
         fields: {
