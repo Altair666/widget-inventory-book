@@ -162,7 +162,10 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .gen-card:last-child{border-bottom:none}
 .gen-card:hover{background:var(--grn-bg)}
 .gen-card-designation{font-family:var(--mono);font-size:11px;color:var(--acc);white-space:nowrap;flex-shrink:0;width:150px;overflow:hidden;text-overflow:ellipsis}
-.gen-card-name{flex:1 1 160px;min-width:160px;font-size:11px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3}
+.gen-card-name{flex:1 1 auto;min-width:0;font-size:11px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3}
+.gen-card-name-wrap{flex:1 1 160px;min-width:160px;display:flex;align-items:center;gap:4px}
+.gen-card-name-wrap .cell-edit-btn{flex-shrink:0}
+.gen-card-name-input{height:26px;font-size:11px}
 .gen-card-box{display:flex;align-items:center;gap:5px;height:28px;padding:0 8px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf);flex-shrink:0}
 .gen-card-box-label{font-size:11px;font-weight:400;color:var(--tx);white-space:nowrap}
 .gen-card-box select,.gen-card-box input{border:none;background:transparent;padding:0;height:auto;font-family:inherit;font-size:11px;color:var(--tx);outline:none}
@@ -288,7 +291,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.35.0</footer>
+<footer class="ver-footer">v0.36.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -337,52 +340,50 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 // dt.code). skipNameSuffix у «ЧД» означает, что для конечной детали в
 // «Наименование» тип документа не дописывается (см. nameForItem()).
 //
-// Порядок ниже сгруппирован по разделам классификации: чертежи (ЧД, СП —
-// по прямой просьбе пользователя СП стоит сразу после ЧД, перед СБ; ГОСТ
-// 2.102 табл.1) → схемы (ГОСТ 2.701, по номеру типа: 1-структурная (Е1,
-// «вид» схемы деления — отдельная буква от Э, но тот же номер типа),
-// 2-функциональная, 3-принципиальная +ПЭ3-компаньон сразу за ней,
-// 4-соединений, 5-подключения) → ЛУ/УД (листы утверждения/удостоверяющие —
-// вне таблиц 2.102, оставлены рядом с текстовыми документами) → текстовые
-// документы (ГОСТ 2.102 табл.3: ВС, Д1, Д4 — Д4 сгруппирован рядом с Д1 как
-// документ «Д»-семейства, нестандартный код — ВП, РР1/РР2/РР3-расчёты
-// (идут перед ТУ, как «Расчёт» перед «Технические условия» в табл.3), ТУ)
-// → эксплуатационные документы
-// (ГОСТ 2.601: ПС, ВЭ, ВДЭ, ЭТ, РЭ) → Т5М/Д («Данные конструкции»,
-// нестандартные коды) и ИС в самом конце — по прямой просьбе пользователя
-// разместить Т5М и Д перед ИС.
+// Порядок столбцов задан пользователем напрямую (не по классификации
+// ГОСТ 2.102/2.701, как раньше) — см. память проекта, v0.36.0. ЧД
+// («Чертёж детали») держится первым столбцом отдельно от остального
+// списка — его заголовок особый, слэш «/» (headerText), это уже так было
+// и до переупорядочивания. ПЭ3 вставлен сразу после СБ по прямому
+// указанию. Э1 («Схема электрическая структурная») — отдельный от Е1
+// («Схема деления структурная») тип, оба существуют одновременно. Д2
+// («Протокол информационного взаимодействия по CAN-интерфейсу») и Д3
+// («Справочный чертёж») — новые коды Д-семейства, добавлены между Д1 и Д4.
 var DOC_TYPES = [
   { code: '', label: 'ЧД', fullName: 'Чертёж детали', skipNameSuffix: true, headerText: '/' },
   { code: '', label: 'СП', fullName: 'Спецификация' },
   { code: 'СБ', label: 'СБ', fullName: 'Сборочный чертёж' },
+  { code: 'ПЭ3', label: 'ПЭ3', fullName: 'Перечень элементов' },
   { code: 'ГЧ', label: 'ГЧ', fullName: 'Габаритный чертёж' },
-  { code: 'Е1', label: 'Е1', fullName: 'Схема деления структурная' },
+  { code: 'ЛУ', label: 'ЛУ', fullName: 'Лист утверждения' },
+  { code: 'Э1', label: 'Э1', fullName: 'Схема электрическая структурная' },
   { code: 'Э2', label: 'Э2', fullName: 'Схема функциональная' },
   { code: 'Э3', label: 'Э3', fullName: 'Схема электрическая принципиальная' },
-  { code: 'ПЭ3', label: 'ПЭ3', fullName: 'Перечень элементов' },
   { code: 'Э4', label: 'Э4', fullName: 'Схема соединений' },
   { code: 'Э5', label: 'Э5', fullName: 'Схема подключения' },
-  { code: 'ЛУ', label: 'ЛУ', fullName: 'Лист утверждения' },
-  { code: 'УД', label: 'УД', fullName: 'Удостоверяющий лист' },
   { code: 'ВС', label: 'ВС', fullName: 'Ведомость спецификаций' },
-  { code: 'Д1', label: 'Д1', fullName: 'Ведомость документов' },
-  { code: 'Д4', label: 'Д4', fullName: 'Комплект карт для оценки правильности применения электрорадиоизделий' },
   { code: 'ВП', label: 'ВП', fullName: 'Ведомость покупных изделий' },
+  { code: 'ТУ', label: 'ТУ', fullName: 'Технические условия' },
+  { code: 'РЭ', label: 'РЭ', fullName: 'Руководство по эксплуатации' },
+  { code: 'ПС', label: 'ПС', fullName: 'Паспорт' },
+  { code: 'ЭТ', label: 'ЭТ', fullName: 'Этикетка' },
+  { code: 'ВЭ', label: 'ВЭ', fullName: 'Ведомость эксплуатационных документов' },
+  { code: 'ВДЭ', label: 'ВДЭ', fullName: 'Ведомость электронных документов' },
+  { code: 'УД', label: 'УД', fullName: 'Удостоверяющий лист' },
+  { code: 'Е1', label: 'Е1', fullName: 'Схема деления структурная' },
   { code: 'РР1', label: 'РР1', fullName: 'Расчёт надёжности' },
   { code: 'РР2', label: 'РР2', fullName: 'Расчёт содержания драгоценных материалов' },
   { code: 'РР3', label: 'РР3', fullName: 'Расчёт показателей уровня стандартизации и унификации' },
-  { code: 'ТУ', label: 'ТУ', fullName: 'Технические условия' },
-  { code: 'ПС', label: 'ПС', fullName: 'Паспорт' },
-  { code: 'ВЭ', label: 'ВЭ', fullName: 'Ведомость эксплуатационных документов' },
-  { code: 'ВДЭ', label: 'ВДЭ', fullName: 'Ведомость электронных документов' },
-  { code: 'ЭТ', label: 'ЭТ', fullName: 'Этикетка' },
-  { code: 'РЭ', label: 'РЭ', fullName: 'Руководство по эксплуатации' },
-  { code: 'Т5М', label: 'Т5М', fullName: 'Данные конструкции' },
   { code: 'Д', label: 'Д', fullName: 'Данные конструкции' },
-  { code: 'ИС', label: 'ИС', fullName: 'Инструкция по эксплуатации' }
+  { code: 'Д1', label: 'Д1', fullName: 'Ведомость документов' },
+  { code: 'Д2', label: 'Д2', fullName: 'Протокол информационного взаимодействия по CAN-интерфейсу' },
+  { code: 'Д3', label: 'Д3', fullName: 'Справочный чертёж' },
+  { code: 'Д4', label: 'Д4', fullName: 'Комплект карт для оценки правильности применения электрорадиоизделий' },
+  { code: 'ИС', label: 'ИС', fullName: 'Инструкция по эксплуатации' },
+  { code: 'Т5М', label: 'Т5М', fullName: 'Данные конструкции' }
 ];
 
-var FORMATS = ['А4', 'А3', 'А2', 'А1', 'А0', '2хА4', '3хА4', '4хА4', '2хА3', '3хА3', '4хА3', '2хА2', '2хА1', '2хА0'];
+var FORMATS = ['А5', 'А4', 'А3', 'А2', 'А1', 'А0', '2хА4', '3хА4', '4хА4', '2хА3', '3хА3', '4хА3', '2хА2', '2хА1', '2хА0'];
 var FORMAT_OTHER = '__other__';
 
 var COMPONENTS_TABLE_CANDIDATES = ['Components', 'components'];
@@ -413,8 +414,9 @@ var state = {
   cellChecked: {},       // componentId -> { docTypeLabel -> true }
   cellLU: {},            // componentId -> { docTypeLabel -> true } — companion "-ЛУ" toggle per cell
   cellUD: {},            // componentId -> { docTypeLabel -> true } — companion "-УД" toggle per cell
-  generatedList: [],     // [{compId, code, label, designation, format, formatOther, sheets}, ...] queued for bulk registration
+  generatedList: [],     // [{compId, code, label, designation, format, formatOther, sheets, nameOverride}, ...] queued for bulk registration
   genExpanded: false,     // true = состав изделия свёрнут, формируемый список развёрнут почти на всю панель
+  genNameEditIdx: null,   // индекс карточки в generatedList, для которой сейчас открыто редактирование наименования
 
   execCounter: 0,         // счётчик для уникальных id вручную добавленных исполнений (exec:<originId>:<n>)
   pendingExecRowId: null  // id строки, для которой сейчас открыта строка-черновик ввода исполнения
@@ -1321,6 +1323,11 @@ function generateDocList() {
 // не дописывается вовсе. Если отмеченная строка — само изделие верхнего
 // уровня, имя не дублируется («ГКВ-10.ГКВ-10» не нужно).
 function nameForItem(item) {
+  // Ручная правка наименования (карандашик в формируемом списке) — старше
+  // и предустановленного, и автособранного варианта: у некоторых документов
+  // название не укладывается в стандартный шаблон (напр. составной
+  // документ "Д-Д4"), пользователь фиксирует итоговый текст сам.
+  if (item.nameOverride != null) return item.nameOverride;
   // Документ, найденный по уже существующему обозначению (см. selectExistingDocument),
   // не привязан к конкретной строке номенклатуры — берём готовое наименование
   // из предыдущей регистрации этого обозначения, а не пересобираем его из
@@ -1355,9 +1362,44 @@ function renderGenList() {
     dnSpan.title = item.designation;
     card.appendChild(dnSpan);
 
-    var nameSpan = document.createElement('span');
-    nameSpan.className = 'gen-card-name'; nameSpan.textContent = nameForItem(item);
-    card.appendChild(nameSpan);
+    var nameWrap = document.createElement('span');
+    nameWrap.className = 'gen-card-name-wrap';
+    if (state.genNameEditIdx === idx) {
+      var nameInput = document.createElement('input');
+      nameInput.className = 'gen-card-name-input form-input';
+      nameInput.value = nameForItem(item);
+      nameWrap.appendChild(nameInput);
+      var nameSaveBtn = iconButton('cell-edit-btn save', checkSvg(), 'Сохранить наименование');
+      var nameCancelBtn = iconButton('cell-edit-btn cancel', xSvg(), 'Отмена');
+      nameSaveBtn.addEventListener('click', function () {
+        item.nameOverride = nameInput.value.trim() || null;
+        state.genNameEditIdx = null;
+        renderGenList();
+      });
+      nameCancelBtn.addEventListener('click', function () {
+        state.genNameEditIdx = null;
+        renderGenList();
+      });
+      nameInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') nameSaveBtn.click();
+        if (e.key === 'Escape') nameCancelBtn.click();
+      });
+      nameWrap.appendChild(nameSaveBtn);
+      nameWrap.appendChild(nameCancelBtn);
+      setTimeout(function () { nameInput.focus(); nameInput.select(); }, 0);
+    } else {
+      var nameSpan = document.createElement('span');
+      nameSpan.className = 'gen-card-name'; nameSpan.textContent = nameForItem(item);
+      nameSpan.title = nameForItem(item);
+      nameWrap.appendChild(nameSpan);
+      var nameEditBtn = iconButton('cell-edit-btn', pencilSvg(), 'Изменить наименование');
+      nameEditBtn.addEventListener('click', function () {
+        state.genNameEditIdx = idx;
+        renderGenList();
+      });
+      nameWrap.appendChild(nameEditBtn);
+    }
+    card.appendChild(nameWrap);
 
     var formatBox = document.createElement('div');
     formatBox.className = 'gen-card-box';
