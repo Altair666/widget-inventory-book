@@ -292,7 +292,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.39.0</footer>
+<footer class="ver-footer">v0.40.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -1791,7 +1791,50 @@ function editableRow(r) {
   frag.appendChild(tdChangeNum);
 
   var tdProduct = document.createElement('td');
-  tdProduct.textContent = productLabelForRecord(r);
+  var linkedProductLabel = productLabelForRecord(r);
+  var chosenProduct = null;
+  if (linkedProductLabel) {
+    tdProduct.textContent = linkedProductLabel;
+  } else {
+    var prodWrap = document.createElement('span');
+    prodWrap.className = 'ac-wrap';
+    var prodInput = document.createElement('input');
+    prodInput.className = 'form-input mono'; prodInput.placeholder = 'Найти изделие…';
+    var prodDrop = document.createElement('div');
+    prodDrop.className = 'ac-drop';
+    prodWrap.appendChild(prodInput);
+    prodWrap.appendChild(prodDrop);
+    prodInput.addEventListener('input', function () {
+      var q = prodInput.value.trim().toLowerCase();
+      prodDrop.innerHTML = '';
+      if (!q) { prodDrop.classList.remove('on'); return; }
+      var matches = Object.keys(state.componentsById).map(function (id) { return state.componentsById[id]; })
+        .filter(function (c) {
+          return c.source === 'cmp' &&
+            ((c.decimal_number || '').toLowerCase().indexOf(q) !== -1 || (c.name || '').toLowerCase().indexOf(q) !== -1);
+        }).slice(0, 40);
+      if (!matches.length) { prodDrop.classList.remove('on'); return; }
+      matches.forEach(function (c) {
+        var item = document.createElement('div');
+        item.className = 'ac-item';
+        var code = document.createElement('span');
+        code.className = 'ac-code'; code.textContent = c.decimal_number || '';
+        var name = document.createElement('span');
+        name.className = 'ac-name'; name.textContent = c.name || '';
+        item.appendChild(code); item.appendChild(name);
+        item.addEventListener('mousedown', function (e) {
+          e.preventDefault();
+          chosenProduct = c;
+          prodInput.value = c.decimal_number || c.name || '';
+          prodDrop.classList.remove('on');
+        });
+        prodDrop.appendChild(item);
+      });
+      prodDrop.classList.add('on');
+    });
+    prodInput.addEventListener('blur', function () { setTimeout(function () { prodDrop.classList.remove('on'); }, 120); });
+    tdProduct.appendChild(prodWrap);
+  }
   frag.appendChild(tdProduct);
 
   var tdDesignation = document.createElement('td');
@@ -1809,9 +1852,14 @@ function editableRow(r) {
 
   var tdFormat = document.createElement('td');
   tdFormat.className = 'reg-format';
-  var inFormat = document.createElement('input');
-  inFormat.className = 'form-input mono'; inFormat.value = r.Format || '';
-  tdFormat.appendChild(inFormat);
+  var inFormat = null;
+  if (r.Format) {
+    tdFormat.textContent = r.Format;
+  } else {
+    inFormat = document.createElement('input');
+    inFormat.className = 'form-input mono'; inFormat.placeholder = 'А4';
+    tdFormat.appendChild(inFormat);
+  }
   frag.appendChild(tdFormat);
 
   var tdName = document.createElement('td');
@@ -1840,10 +1888,14 @@ function editableRow(r) {
     var fields = {
       IssueDate: inputValueToDate(inDate.value),
       Sheets: parseInt(inSheets.value, 10) || 1,
-      Format: inFormat.value.trim(),
       FileName: inFileName.value.trim(),
       Note: taNote.value.trim()
     };
+    if (inFormat) fields.Format = inFormat.value.trim();
+    if (chosenProduct) {
+      fields.Product = chosenProduct.rawId;
+      fields.ProductName = chosenProduct.rawId;
+    }
     grist.selectedTable.update({ id: r.id, fields: fields }).then(function () {
       editingId = null;
     }).catch(showError);
