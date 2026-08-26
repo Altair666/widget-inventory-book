@@ -297,7 +297,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.41.0</footer>
+<footer class="ver-footer">v0.42.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -400,6 +400,12 @@ var DOC_TYPES = DOC_TYPES_BUILTIN.slice();
 // только для fullNameForDocType() (берёт первый вариант) — карандашик с
 // выбором варианта хвоста (Д1-Д6) относится к отдельной задаче.
 var DOC_TYPE_VARIANTS = {};
+// Реальный resolved id таблицы Doc_types в документе (может отличаться
+// регистром от кандидатов DOC_TYPES_TABLE_CANDIDATES) — нужен для записи
+// новых вариантов хвоста через applyUserActions (см. ensureDocTypeVariant).
+// Пока таблица не найдена/не загружена — null, запись новых вариантов
+// молча пропускается (список остаётся встроенным, как и раньше).
+var DOC_TYPES_TABLE_ID = null;
 
 var FORMATS = ['А5', 'А4', 'А3', 'А2', 'А1', 'А0', '2хА4', '3хА4', '4хА4', '2хА3', '3хА3', '4хА3', '2хА2', '2хА1', '2хА0'];
 var DEFAULT_FORMAT = 'А4';
@@ -604,6 +610,18 @@ function docTypesTableCandidates() {
   return DOC_TYPES_TABLE_CANDIDATES;
 }
 
+// Дублирует резолюцию имени таблицы из fetchTableByCandidates (та не
+// возвращает наружу, какой именно кандидат подошёл) — нужен фактический
+// tableId для записи через applyUserActions в ensureDocTypeVariant().
+function resolveTableId(candidates, allTables) {
+  if (!allTables) return candidates[0];
+  for (var i = 0; i < candidates.length; i++) {
+    var match = allTables.filter(function (t) { return String(t).toLowerCase() === candidates[i].toLowerCase(); })[0];
+    if (match) return match;
+  }
+  return null;
+}
+
 // Заменяет DOC_TYPES данными из таблицы Doc_types документа, если она
 // найдена; иначе оставляет встроенный список DOC_TYPES_BUILTIN без изменений
 // (таблица — опциональная надстройка, отсутствие не должно ломать виджет).
@@ -612,6 +630,7 @@ function docTypesTableCandidates() {
 // DOC_TYPE_VARIANTS[label] для последующего использования.
 function loadDocTypes() {
   listTablesSafe().then(function (allTables) {
+    DOC_TYPES_TABLE_ID = resolveTableId(docTypesTableCandidates(), allTables);
     return fetchTableByCandidates(docTypesTableCandidates(), allTables);
   }).then(function (table) {
     if (!table) {
@@ -662,6 +681,50 @@ function loadDocTypes() {
     rebuildTreeForSelectedProduct();
   }).catch(function (err) {
     console.warn('[inventory-book] ошибка загрузки таблицы Doc_types — используется встроенный список типов документов:', err);
+  });
+}
+
+// Находит среди DOC_TYPE_VARIANTS[label] вариант с таким же текстом (без
+// учёта регистра/пробелов по краям) — если найден, ничего не пишет и просто
+// возвращает его id. Иначе создаёт новую строку в Doc_types (копируя
+// Code/SkipNameSuffix у базовой записи метки, NeedsTail=true) — так пользователь
+// печатает свой хвост один раз, а дальше он появляется в выпадающем списке
+// (datalist в renderGenList) для повторного выбора вместо перепечатывания.
+// NameDocType в самой записи Inventory_book по-прежнему указывает на базовую
+// запись метки (см. nameFieldsForItem) — формула Name для needsTail-типов
+// берёт текст хвоста напрямую из NameTail, а не из FullName ссылки, так что
+// на какой именно вариант указывает NameDocType, на итоговый текст не влияет;
+// id нового варианта используется только как результат этой функции для тех,
+// кому он понадобится, и для пополнения каталога.
+function ensureDocTypeVariant(label, fullNameText) {
+  var text = String(fullNameText || '').trim();
+  var base = DOC_TYPES.filter(function (d) { return d.label === label; })[0];
+  if (!text) return Promise.resolve(base ? base.id : 0);
+  var list = DOC_TYPE_VARIANTS[label] || [];
+  var existing = list.filter(function (v) {
+    return String(v.fullName || '').trim().toLowerCase() === text.toLowerCase();
+  })[0];
+  if (existing) return Promise.resolve(existing.id);
+  if (!DOC_TYPES_TABLE_ID || !grist.docApi || typeof grist.docApi.applyUserActions !== 'function') {
+    return Promise.resolve(base ? base.id : 0);
+  }
+  var fields = {
+    Label: label,
+    Code: base ? base.code : '',
+    FullName: text,
+    SkipNameSuffix: base ? !!base.skipNameSuffix : false,
+    NeedsTail: true,
+    HeaderText: base ? base.headerText : ''
+  };
+  return grist.docApi.applyUserActions([['AddRecord', DOC_TYPES_TABLE_ID, null, fields]]).then(function (res) {
+    var newId = res && res.retValues && res.retValues[0];
+    if (newId) {
+      DOC_TYPE_VARIANTS[label] = list.concat([{ id: newId, fullName: text, needsTail: true }]);
+    }
+    return newId || (base ? base.id : 0);
+  }).catch(function (err) {
+    console.warn('[inventory-book] не удалось сохранить новый вариант хвоста "' + text + '" для ' + label + ' в Doc_types:', err);
+    return base ? base.id : 0;
   });
 }
 
@@ -1507,6 +1570,22 @@ function renderGenList() {
         var tailInput = document.createElement('input');
         tailInput.className = 'gen-card-name-input form-input';
         tailInput.value = (item.tailOverride != null) ? item.tailOverride : fullNameForDocType(genDtEntry.label);
+        // Список ранее использованных хвостов для этой метки (DOC_TYPE_VARIANTS,
+        // включая только что созданные в этой же сессии — см. ensureDocTypeVariant)
+        // — стрелкой выбрать готовый вариант или напечатать свой, он попадёт в
+        // каталог при регистрации.
+        var tailListId = 'genTailList' + idx;
+        var tailList = document.createElement('datalist');
+        tailList.id = tailListId;
+        (DOC_TYPE_VARIANTS[genDtEntry.label] || []).forEach(function (v) {
+          var optText = String(v.fullName || '').trim();
+          if (!optText) return;
+          var opt = document.createElement('option');
+          opt.value = optText;
+          tailList.appendChild(opt);
+        });
+        tailInput.setAttribute('list', tailListId);
+        nameWrap.appendChild(tailList);
         nameWrap.appendChild(tailInput);
         var tailSaveBtn = iconButton('cell-edit-btn save', checkSvg(), 'Сохранить хвост наименования');
         var tailCancelBtn = iconButton('cell-edit-btn cancel', xSvg(), 'Отмена');
@@ -1701,50 +1780,71 @@ function registerGeneratedDocs() {
       bumpChangeNumberFloor(designations[i], n);
     });
 
-    var recordsToCreate = state.generatedList.map(function (item) {
-      maxInv += 1;
-      var padded = String(maxInv);
-      while (padded.length < 5) padded = '0' + padded;
-      var invNumber = yy + '-' + padded;
-
-      var key = String(item.designation);
-      var changeNumber = (key in freshFloor) ? freshFloor[key] + 1 : 0;
-      freshFloor[key] = changeNumber;
-      bumpChangeNumberFloor(item.designation, changeNumber);
-
-      var format = item.format === FORMAT_OTHER ? item.formatOther.trim() : item.format;
-      var nameFields = nameFieldsForItem(item);
-      var ext = item.label === 'Т5М' ? '.zip' : '.pdf';
-      var fileName = item.designation.replace(/\s+/g, '') + '_изм' + pad2(changeNumber) + ext;
-
-      return {
-        fields: Object.assign({
-          InventoryNumber: invNumber,
-          IssueDate: inputValueToDate(dateVal),
-          Product: (topComp && topComp.source === 'cmp') ? topComp.rawId : 0,
-          ProductName: (topComp && topComp.source === 'cmp') ? topComp.rawId : 0,
-          DocumentDesignation: item.designation,
-          DocTypeCode: item.label,
-          Sheets: item.sheets,
-          Format: format,
-          FileName: fileName,
-          ChangeNumber: changeNumber,
-          Note: reason
-        }, nameFields)
-      };
+    // Прежде чем строить сами записи: для карточек с ручным хвостом (Д1-Д4),
+    // текст которого ещё не встречался в Doc_types, заводим новую строку в
+    // справочнике (см. ensureDocTypeVariant) — так «запись в реестр» пополняет
+    // и каталог вариантов, доступный дальше через datalist в карандашике.
+    // Дедуп по label+text внутри одной пачки — чтобы не создать две одинаковые
+    // строки, если несколько карточек в этой регистрации получили один и тот
+    // же новый хвост.
+    var seenVariantKeys = {};
+    var variantPromises = [];
+    state.generatedList.forEach(function (item) {
+      if (item.tailOverride == null) return;
+      var text = item.tailOverride.trim();
+      if (!text) return;
+      var key = item.label + '|' + text.toLowerCase();
+      if (seenVariantKeys[key]) return;
+      seenVariantKeys[key] = true;
+      variantPromises.push(ensureDocTypeVariant(item.label, text));
     });
 
-    return grist.selectedTable.create(recordsToCreate).then(function (result) {
-      var results = Array.isArray(result) ? result : [result];
-      results.forEach(function (res, i) {
-        state.records.push(Object.assign({ id: res.id }, recordsToCreate[i].fields));
+    return Promise.all(variantPromises).then(function () {
+      var recordsToCreate = state.generatedList.map(function (item) {
+        maxInv += 1;
+        var padded = String(maxInv);
+        while (padded.length < 5) padded = '0' + padded;
+        var invNumber = yy + '-' + padded;
+
+        var key = String(item.designation);
+        var changeNumber = (key in freshFloor) ? freshFloor[key] + 1 : 0;
+        freshFloor[key] = changeNumber;
+        bumpChangeNumberFloor(item.designation, changeNumber);
+
+        var format = item.format === FORMAT_OTHER ? item.formatOther.trim() : item.format;
+        var nameFields = nameFieldsForItem(item);
+        var ext = item.label === 'Т5М' ? '.zip' : '.pdf';
+        var fileName = item.designation.replace(/\s+/g, '') + '_изм' + pad2(changeNumber) + ext;
+
+        return {
+          fields: Object.assign({
+            InventoryNumber: invNumber,
+            IssueDate: inputValueToDate(dateVal),
+            Product: (topComp && topComp.source === 'cmp') ? topComp.rawId : 0,
+            ProductName: (topComp && topComp.source === 'cmp') ? topComp.rawId : 0,
+            DocumentDesignation: item.designation,
+            DocTypeCode: item.label,
+            Sheets: item.sheets,
+            Format: format,
+            FileName: fileName,
+            ChangeNumber: changeNumber,
+            Note: reason
+          }, nameFields)
+        };
       });
-      state.generatedList = [];
-      rebuildTreeForSelectedProduct();
-      renderGenList();
-      document.getElementById('fNote').value = '';
-      resetForm();
-      btn.disabled = false;
+
+      return grist.selectedTable.create(recordsToCreate).then(function (result) {
+        var results = Array.isArray(result) ? result : [result];
+        results.forEach(function (res, i) {
+          state.records.push(Object.assign({ id: res.id }, recordsToCreate[i].fields));
+        });
+        state.generatedList = [];
+        rebuildTreeForSelectedProduct();
+        renderGenList();
+        document.getElementById('fNote').value = '';
+        resetForm();
+        btn.disabled = false;
+      });
     });
   }).catch(function (err) {
     showError(err);
