@@ -89,7 +89,10 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .reg-sheets{width:40px;white-space:nowrap}
 .reg-format{width:52px;white-space:nowrap}
 .reg-name{text-align:left;white-space:normal;max-width:200px;word-break:break-word;overflow-wrap:anywhere}
-.reg-reason{text-align:left;white-space:pre-wrap;max-width:340px;word-break:break-word;overflow-wrap:anywhere}
+.reg-reason{text-align:left;max-width:340px;word-break:break-word;overflow-wrap:anywhere}
+.reg-note-text{white-space:pre-wrap}
+.reg-note-text.clamped{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.reg-note-toggle{margin-top:2px;padding:0;border:none;background:none;font-size:10px;color:var(--acc);cursor:pointer;text-decoration:underline}
 .reg-empty{padding:16px;text-align:center;color:var(--tx3);font-size:12px}
 .reg-filter-bar{padding:8px 12px;background:var(--surf2);border-bottom:1px solid var(--brd);display:flex;align-items:center;gap:8px}
 .reg-filter-wrap{position:relative;flex:1}
@@ -166,6 +169,8 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .gen-card-name-wrap{flex:1 1 160px;min-width:160px;display:flex;align-items:center;gap:4px}
 .gen-card-name-wrap .cell-edit-btn{flex-shrink:0}
 .gen-card-name-input{height:26px;font-size:11px}
+.gen-card-name-wrap .gen-card-name-input{flex:1 1 60px;min-width:60px;width:auto}
+.gen-card-name-base{flex:0 1 auto;min-width:0;max-width:45%;font-size:11px;color:var(--tx-muted,#888);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gen-card-box{display:flex;align-items:center;justify-content:center;gap:5px;height:28px;width:132px;padding:0 8px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf);flex-shrink:0}
 .gen-card-box-label{font-size:11px;font-weight:400;color:var(--tx);white-space:nowrap}
 .gen-card-box select,.gen-card-box input{border:none;background:transparent;padding:0;height:auto;font-family:inherit;font-size:11px;color:var(--tx);outline:none}
@@ -292,7 +297,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.40.0</footer>
+<footer class="ver-footer">v0.41.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -350,7 +355,11 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 // («Схема деления структурная») тип, оба существуют одновременно. Д2
 // («Протокол информационного взаимодействия по CAN-интерфейсу») и Д3
 // («Справочный чертёж») — новые коды Д-семейства, добавлены между Д1 и Д4.
-var DOC_TYPES = [
+// DOC_TYPES_BUILTIN — резервный список, используется только пока не загрузилась
+// (или отсутствует) таблица Doc_types в документе; см. loadDocTypes() ниже,
+// которая при успехе заменяет DOC_TYPES данными из таблицы. Пока таблица не
+// загружена, DOC_TYPES === DOC_TYPES_BUILTIN.
+var DOC_TYPES_BUILTIN = [
   { code: '', label: 'ЧД', fullName: 'Чертёж детали', skipNameSuffix: true, headerText: '/' },
   { code: '', label: 'СП', fullName: 'Спецификация' },
   { code: 'СБ', label: 'СБ', fullName: 'Сборочный чертёж' },
@@ -384,6 +393,14 @@ var DOC_TYPES = [
   { code: 'Т5М', label: 'Т5М', fullName: 'Данные конструкции' }
 ];
 
+var DOC_TYPES = DOC_TYPES_BUILTIN.slice();
+// label -> [{fullName, needsTail}, ...] — все варианты FullName для одной
+// метки из таблицы Doc_types (несколько строк с одинаковым Label, напр. два
+// варианта хвоста для Д1). Заполняется в loadDocTypes(); используется пока
+// только для fullNameForDocType() (берёт первый вариант) — карандашик с
+// выбором варианта хвоста (Д1-Д6) относится к отдельной задаче.
+var DOC_TYPE_VARIANTS = {};
+
 var FORMATS = ['А5', 'А4', 'А3', 'А2', 'А1', 'А0', '2хА4', '3хА4', '4хА4', '2хА3', '3хА3', '4хА3', '2хА2', '2хА1', '2хА0'];
 var DEFAULT_FORMAT = 'А4';
 var FORMAT_OTHER = '__other__';
@@ -391,6 +408,7 @@ var FORMAT_OTHER = '__other__';
 var COMPONENTS_TABLE_CANDIDATES = ['Components', 'components'];
 var ESPD_TABLE_CANDIDATES = ['ESPD_components', 'espd_components'];
 var ESTD_TABLE_CANDIDATES = ['ESTD_components', 'estd_components'];
+var DOC_TYPES_TABLE_CANDIDATES = ['Doc_types', 'doc_types'];
 
 var DEFAULT_OPTIONS = {
   componentsTableId: '',
@@ -486,6 +504,7 @@ grist.ready({ requiredAccess: 'full' });
 grist.onOptions(function (options) {
   state.options = Object.assign({}, DEFAULT_OPTIONS, options || {});
   updateComputedFields();
+  loadDocTypes();
   loadComponents();
 });
 
@@ -577,6 +596,73 @@ function makeColGetter(table) {
     }
     return cache[cacheKey];
   };
+}
+
+// ---------- Doc_types table (типы документов) ----------
+
+function docTypesTableCandidates() {
+  return DOC_TYPES_TABLE_CANDIDATES;
+}
+
+// Заменяет DOC_TYPES данными из таблицы Doc_types документа, если она
+// найдена; иначе оставляет встроенный список DOC_TYPES_BUILTIN без изменений
+// (таблица — опциональная надстройка, отсутствие не должно ломать виджет).
+// Несколько строк с одинаковым Label группируются в один столбец (позиция —
+// по первому появлению метки), а весь набор их FullName сохраняется в
+// DOC_TYPE_VARIANTS[label] для последующего использования.
+function loadDocTypes() {
+  listTablesSafe().then(function (allTables) {
+    return fetchTableByCandidates(docTypesTableCandidates(), allTables);
+  }).then(function (table) {
+    if (!table) {
+      console.warn('[inventory-book] таблица Doc_types не найдена среди: ' + docTypesTableCandidates().join(', ') + ' — используется встроенный список типов документов');
+      return;
+    }
+    var col = makeColGetter(table);
+    var cLabel = col('Label'), cCode = col('Code'), cFullName = col('FullName'),
+        cSkipSuffix = col('SkipNameSuffix'), cNeedsTail = col('NeedsTail'), cHeader = col('HeaderText');
+    var ids = table.id || [];
+    if (!cLabel || !ids.length) {
+      console.warn('[inventory-book] таблица Doc_types пуста или без колонки Label — используется встроенный список типов документов');
+      return;
+    }
+
+    var columns = [];
+    var byLabel = {};
+    var variants = {};
+
+    ids.forEach(function (id, i) {
+      var label = String(cLabel[i] || '').trim();
+      if (!label) return;
+      var entry = {
+        id: id, // Grist rowId в Doc_types — нужен для записи ссылки NameDocType
+        code: cCode ? String(cCode[i] || '') : '',
+        label: label,
+        fullName: cFullName ? String(cFullName[i] || '') : '',
+        skipNameSuffix: cSkipSuffix ? !!cSkipSuffix[i] : false,
+        needsTail: cNeedsTail ? !!cNeedsTail[i] : false,
+        headerText: cHeader ? String(cHeader[i] || '') : ''
+      };
+      if (!variants[label]) variants[label] = [];
+      variants[label].push({ id: id, fullName: entry.fullName, needsTail: entry.needsTail });
+      if (!byLabel[label]) {
+        byLabel[label] = entry;
+        columns.push(entry);
+      }
+    });
+
+    if (!columns.length) {
+      console.warn('[inventory-book] в таблице Doc_types нет ни одной строки с непустым Label — используется встроенный список типов документов');
+      return;
+    }
+
+    DOC_TYPES = columns;
+    DOC_TYPE_VARIANTS = variants;
+    console.log('[inventory-book] типы документов загружены из таблицы Doc_types: ' + columns.length + ' столбцов, ' + ids.length + ' строк');
+    rebuildTreeForSelectedProduct();
+  }).catch(function (err) {
+    console.warn('[inventory-book] ошибка загрузки таблицы Doc_types — используется встроенный список типов документов:', err);
+  });
 }
 
 function loadComponents() {
@@ -1343,8 +1429,44 @@ function nameForItem(item) {
   var base = (item.compId === state.selectedProductId || !topName) ? (nodeName || topName) : (topName + '.' + nodeName);
   var dtEntry = DOC_TYPES.filter(function (d) { return d.label === item.label; })[0];
   if (dtEntry && dtEntry.skipNameSuffix) return base;
+  if (dtEntry && dtEntry.needsTail) {
+    var tail = (item.tailOverride != null) ? item.tailOverride : fullNameForDocType(dtEntry.label);
+    return tail ? (base + '. ' + tail) : base;
+  }
   var full = dtEntry ? fullNameForDocType(dtEntry.label) : '';
   return full ? (base + '. ' + full) : base;
+}
+
+// Наименование в Inventory_book — trigger-formula колонка на стороне Grist
+// (пересчитывается из NameNode/NameDocType/NameTail/ProductName; если
+// NameNode пуст — берётся NameOverride как есть). Виджет поэтому пишет не
+// готовый текст, а ссылки — динамическое обновление наименования при
+// переименовании узла/типа документа происходит на стороне Grist без
+// повторного прохода по реестру. nameForItem() выше остаётся локальным
+// JS-зеркалом той же формулы — только для мгновенного превью в форме, пока
+// запись ещё не создана и формула не может сработать.
+function nameFieldsForItem(item) {
+  var manual = (item.nameOverride != null) ? item.nameOverride : (item.presetName != null ? item.presetName : null);
+  if (manual != null) {
+    return { NameNode: 0, NameDocType: 0, NameTail: '', NameOverride: manual };
+  }
+  var comp = state.componentsById[item.compId];
+  if (!comp || comp.source !== 'cmp') {
+    // ESPD/ESTD-документ или узел не найден — нет настоящей строки Components
+    // для ссылки NameNode, наименование остаётся текстом (как раньше).
+    return { NameNode: 0, NameDocType: 0, NameTail: '', NameOverride: nameForItem(item) };
+  }
+  var dtEntry = DOC_TYPES.filter(function (d) { return d.label === item.label; })[0];
+  var tail = '';
+  if (dtEntry && dtEntry.needsTail) {
+    tail = (item.tailOverride != null) ? item.tailOverride : fullNameForDocType(dtEntry.label);
+  }
+  return {
+    NameNode: comp.rawId,
+    NameDocType: (dtEntry && dtEntry.id) ? dtEntry.id : 0,
+    NameTail: tail,
+    NameOverride: ''
+  };
 }
 
 function renderGenList() {
@@ -1366,35 +1488,74 @@ function renderGenList() {
 
     var nameWrap = document.createElement('span');
     nameWrap.className = 'gen-card-name-wrap';
+    // Гибридный карандашик: для типов документов со свободным хвостом
+    // (Д1-Д4, NeedsTail=true в Doc_types) базовая часть наименования
+    // (изделие/узел) остаётся динамической ссылкой (NameNode/ProductName —
+    // см. nameFieldsForItem), а редактируется только хвост, который пишется
+    // в NameTail как обычный текст. Полная перезапись всего наименования
+    // (nameOverride) для таких строк недоступна — она обнулила бы ссылки.
+    var genComp = state.componentsById[item.compId];
+    var genDtEntry = DOC_TYPES.filter(function (d) { return d.label === item.label; })[0];
+    var isHybridTail = !!(genDtEntry && genDtEntry.needsTail && genComp && genComp.source === 'cmp' &&
+      item.nameOverride == null && item.presetName == null);
     if (state.genNameEditIdx === idx) {
-      var nameInput = document.createElement('input');
-      nameInput.className = 'gen-card-name-input form-input';
-      nameInput.value = nameForItem(item);
-      nameWrap.appendChild(nameInput);
-      var nameSaveBtn = iconButton('cell-edit-btn save', checkSvg(), 'Сохранить наименование');
-      var nameCancelBtn = iconButton('cell-edit-btn cancel', xSvg(), 'Отмена');
-      nameSaveBtn.addEventListener('click', function () {
-        item.nameOverride = nameInput.value.trim() || null;
-        state.genNameEditIdx = null;
-        renderGenList();
-      });
-      nameCancelBtn.addEventListener('click', function () {
-        state.genNameEditIdx = null;
-        renderGenList();
-      });
-      nameInput.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') nameSaveBtn.click();
-        if (e.key === 'Escape') nameCancelBtn.click();
-      });
-      nameWrap.appendChild(nameSaveBtn);
-      nameWrap.appendChild(nameCancelBtn);
-      setTimeout(function () { nameInput.focus(); nameInput.select(); }, 0);
+      if (isHybridTail) {
+        var baseText = nameForItem(Object.assign({}, item, { tailOverride: '' }));
+        var basePrefix = document.createElement('span');
+        basePrefix.className = 'gen-card-name-base'; basePrefix.textContent = baseText + '. ';
+        nameWrap.appendChild(basePrefix);
+        var tailInput = document.createElement('input');
+        tailInput.className = 'gen-card-name-input form-input';
+        tailInput.value = (item.tailOverride != null) ? item.tailOverride : fullNameForDocType(genDtEntry.label);
+        nameWrap.appendChild(tailInput);
+        var tailSaveBtn = iconButton('cell-edit-btn save', checkSvg(), 'Сохранить хвост наименования');
+        var tailCancelBtn = iconButton('cell-edit-btn cancel', xSvg(), 'Отмена');
+        tailSaveBtn.addEventListener('click', function () {
+          item.tailOverride = tailInput.value.trim() || null;
+          state.genNameEditIdx = null;
+          renderGenList();
+        });
+        tailCancelBtn.addEventListener('click', function () {
+          state.genNameEditIdx = null;
+          renderGenList();
+        });
+        tailInput.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') tailSaveBtn.click();
+          if (e.key === 'Escape') tailCancelBtn.click();
+        });
+        nameWrap.appendChild(tailSaveBtn);
+        nameWrap.appendChild(tailCancelBtn);
+        setTimeout(function () { tailInput.focus(); tailInput.select(); }, 0);
+      } else {
+        var nameInput = document.createElement('input');
+        nameInput.className = 'gen-card-name-input form-input';
+        nameInput.value = nameForItem(item);
+        nameWrap.appendChild(nameInput);
+        var nameSaveBtn = iconButton('cell-edit-btn save', checkSvg(), 'Сохранить наименование');
+        var nameCancelBtn = iconButton('cell-edit-btn cancel', xSvg(), 'Отмена');
+        nameSaveBtn.addEventListener('click', function () {
+          item.nameOverride = nameInput.value.trim() || null;
+          state.genNameEditIdx = null;
+          renderGenList();
+        });
+        nameCancelBtn.addEventListener('click', function () {
+          state.genNameEditIdx = null;
+          renderGenList();
+        });
+        nameInput.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') nameSaveBtn.click();
+          if (e.key === 'Escape') nameCancelBtn.click();
+        });
+        nameWrap.appendChild(nameSaveBtn);
+        nameWrap.appendChild(nameCancelBtn);
+        setTimeout(function () { nameInput.focus(); nameInput.select(); }, 0);
+      }
     } else {
       var nameSpan = document.createElement('span');
       nameSpan.className = 'gen-card-name'; nameSpan.textContent = nameForItem(item);
       nameSpan.title = nameForItem(item);
       nameWrap.appendChild(nameSpan);
-      var nameEditBtn = iconButton('cell-edit-btn', pencilSvg(), 'Изменить наименование');
+      var nameEditBtn = iconButton('cell-edit-btn', pencilSvg(), isHybridTail ? 'Изменить хвост наименования' : 'Изменить наименование');
       nameEditBtn.addEventListener('click', function () {
         state.genNameEditIdx = idx;
         renderGenList();
@@ -1552,12 +1713,12 @@ function registerGeneratedDocs() {
       bumpChangeNumberFloor(item.designation, changeNumber);
 
       var format = item.format === FORMAT_OTHER ? item.formatOther.trim() : item.format;
-      var name = nameForItem(item);
+      var nameFields = nameFieldsForItem(item);
       var ext = item.label === 'Т5М' ? '.zip' : '.pdf';
       var fileName = item.designation.replace(/\s+/g, '') + '_изм' + pad2(changeNumber) + ext;
 
       return {
-        fields: {
+        fields: Object.assign({
           InventoryNumber: invNumber,
           IssueDate: inputValueToDate(dateVal),
           Product: (topComp && topComp.source === 'cmp') ? topComp.rawId : 0,
@@ -1566,11 +1727,10 @@ function registerGeneratedDocs() {
           DocTypeCode: item.label,
           Sheets: item.sheets,
           Format: format,
-          Name: name,
           FileName: fileName,
           ChangeNumber: changeNumber,
           Note: reason
-        }
+        }, nameFields)
       };
     });
 
@@ -1694,6 +1854,7 @@ var regBody = document.getElementById('regBody');
 var regCount = document.getElementById('regCount');
 var regFilterInput = document.getElementById('regFilterInput');
 var editingId = null;
+var expandedNoteIds = {}; // id записи -> true, если примечание (>4 строк) развёрнуто пользователем
 
 function productLabelForRecord(r) {
   var productNameId = resolveRefId(r.ProductName, 'name');
@@ -1704,6 +1865,35 @@ function productLabelForRecord(r) {
   if (typeof r.Product === 'string' && r.Product) return r.Product;
   var refId = productNameId || productId;
   return refId ? ('#' + refId) : '';
+}
+
+// Примечание длиннее 4 строк сворачивается (line-clamp), чтобы не растягивать
+// строку таблицы; развёрнутое состояние запоминается per-запись в
+// expandedNoteIds, чтобы не схлопывалось при каждом renderRegistry().
+function buildNoteCell(r) {
+  var frag = document.createDocumentFragment();
+  var text = r.Note || '';
+  var lineCount = text ? text.split('\n').length : 0;
+  var needsToggle = lineCount > 4;
+  var expanded = !!expandedNoteIds[r.id];
+
+  var textEl = document.createElement('div');
+  textEl.className = 'reg-note-text' + (needsToggle && !expanded ? ' clamped' : '');
+  textEl.textContent = text;
+  frag.appendChild(textEl);
+
+  if (needsToggle) {
+    var toggleBtn = document.createElement('button');
+    toggleBtn.type = 'button';
+    toggleBtn.className = 'reg-note-toggle';
+    toggleBtn.textContent = expanded ? 'Свернуть' : 'Показать полностью';
+    toggleBtn.addEventListener('click', function () {
+      if (expanded) delete expandedNoteIds[r.id]; else expandedNoteIds[r.id] = true;
+      renderRegistry();
+    });
+    frag.appendChild(toggleBtn);
+  }
+  return frag;
 }
 
 function renderRegistry() {
@@ -1754,7 +1944,7 @@ function renderRegistry() {
       c[6].textContent = r.Format || '';
       c[7].textContent = r.Name || '';
       c[8].textContent = r.FileName || '';
-      c[9].textContent = r.Note || '';
+      c[9].appendChild(buildNoteCell(r));
       var actions = c[10];
       var actionsWrap = document.createElement('span');
       actionsWrap.className = 'reg-actions-wrap';
