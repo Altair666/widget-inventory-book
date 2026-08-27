@@ -300,7 +300,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.43.0</footer>
+<footer class="ver-footer">v0.44.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -420,6 +420,16 @@ var COMPONENTS_TABLE_CANDIDATES = ['Components', 'components'];
 var ESPD_TABLE_CANDIDATES = ['ESPD_components', 'espd_components'];
 var ESTD_TABLE_CANDIDATES = ['ESTD_components', 'estd_components'];
 var DOC_TYPES_TABLE_CANDIDATES = ['Doc_types', 'doc_types'];
+var INVENTORY_CONF_TABLE_CANDIDATES = ['Inventory_conf', 'inventory_conf'];
+
+// classCode/subclassCode (2/3-значный код класса ЕСКД) -> [label, ...] дефолтных
+// чекбоксов, заполняется из таблицы Inventory_conf (см. loadInventoryConf()).
+// Подкласс проверяется первым (переопределяет класс), затем класс; если для
+// класса компонента нет строки вовсе (большинство классов ЕСКД пока без
+// статистики) — defaultCodesForRow() откатывается на старые ролевые списки
+// DEFAULT_CODES_TOP/ASSEMBLY/LEAF ниже.
+var INVENTORY_CONF_BY_SUBCLASS = {};
+var INVENTORY_CONF_BY_CLASS = {};
 
 var DEFAULT_OPTIONS = {
   componentsTableId: '',
@@ -456,6 +466,28 @@ var state = {
 function setConn(ok, label) {
   document.getElementById('connDot').className = 'conn-dot' + (ok ? ' ok' : '');
   document.getElementById('connLbl').textContent = label;
+}
+
+function pluralizeRu(n, one, few, many) {
+  var mod10 = n % 10, mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
+  return many;
+}
+
+// Индикатор подключения показывает не просто факт связи с Grist, а сколько
+// компонентов номенклатуры реально загружено — источник данных для всего
+// поиска изделий/дерева состава, полезнее видеть его размер, чем голое "ок".
+// Вызывается и из onRecords (реестр Inventory_book), и из loadComponents()
+// (номенклатура) — до того, как обе части загружены хотя бы раз, показывает
+// нейтральный статус подключения без числа.
+function updateConnLabel() {
+  if (!state.componentsLoaded) {
+    setConn(state.recordsLoaded, state.recordsLoaded ? 'Подключено к Grist' : 'Ожидание Grist…');
+    return;
+  }
+  var total = Object.keys(state.componentsById).length;
+  setConn(true, 'Подключено к Grist — ' + total + ' ' + pluralizeRu(total, 'компонент', 'компонента', 'компонентов'));
 }
 
 function docTypeNameOverrides() {
@@ -516,13 +548,14 @@ grist.onOptions(function (options) {
   state.options = Object.assign({}, DEFAULT_OPTIONS, options || {});
   updateComputedFields();
   loadDocTypes();
+  loadInventoryConf();
   loadComponents();
 });
 
 grist.onRecords(function (records) {
-  setConn(true, 'Подключено к Grist');
   state.recordsLoaded = true;
   state.records = records;
+  updateConnLabel();
   refreshChangeNumberFloorsFromServer();
   updateComputedFields();
   renderRegistry();
@@ -733,6 +766,74 @@ function ensureDocTypeVariant(label, fullNameText) {
   });
 }
 
+// ---------- Inventory_conf table (дефолтные пресеты чекбоксов по классу ЕСКД) ----------
+
+function inventoryConfTableCandidates() {
+  return INVENTORY_CONF_TABLE_CANDIDATES;
+}
+
+// Заполняет INVENTORY_CONF_BY_CLASS/BY_SUBCLASS из таблицы Inventory_conf,
+// если она есть в документе; иначе оставляет оба объекта пустыми, и
+// defaultCodesForRow() целиком работает по старым ролевым спискам, как до
+// появления этой таблицы (см. миграцию 2026-08-27 в памяти проекта).
+function loadInventoryConf() {
+  listTablesSafe().then(function (allTables) {
+    return fetchTableByCandidates(inventoryConfTableCandidates(), allTables);
+  }).then(function (table) {
+    if (!table) {
+      console.warn('[inventory-book] таблица Inventory_conf не найдена среди: ' + inventoryConfTableCandidates().join(', ') + ' — используются только встроенные ролевые списки по умолчанию');
+      return;
+    }
+    var col = makeColGetter(table);
+    var cClass = col('ClassCode'), cSubclass = col('SubclassCode'), cLabels = col('DefaultLabels');
+    var ids = table.id || [];
+    if (!cClass || !cLabels || !ids.length) {
+      console.warn('[inventory-book] таблица Inventory_conf пуста или без колонок ClassCode/DefaultLabels — используются только встроенные ролевые списки по умолчанию');
+      return;
+    }
+    var byClass = {}, bySubclass = {};
+    ids.forEach(function (id, i) {
+      var labels = String(cLabels[i] || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+      if (!labels.length) return;
+      var classCode = cClass ? String(cClass[i] || '').trim() : '';
+      var subclassCode = cSubclass ? String(cSubclass[i] || '').trim() : '';
+      if (subclassCode) bySubclass[subclassCode] = labels;
+      else if (classCode) byClass[classCode] = labels;
+    });
+    INVENTORY_CONF_BY_CLASS = byClass;
+    INVENTORY_CONF_BY_SUBCLASS = bySubclass;
+    console.log('[inventory-book] пресеты по классам ЕСКД загружены из Inventory_conf: ' + Object.keys(byClass).length + ' классов, ' + Object.keys(bySubclass).length + ' подклассов');
+    rebuildTreeForSelectedProduct();
+  }).catch(function (err) {
+    console.warn('[inventory-book] ошибка загрузки таблицы Inventory_conf — используются только встроенные ролевые списки по умолчанию:', err);
+  });
+}
+
+// Извлекает 2/3-значный код класса/подкласса ЕСКД из децимального номера
+// компонента (формат ГОСТ «{префикс}.{6 цифр}.{серийный}», напр.
+// «ТСЕМ.466945.001» -> classCode «46», subclassCode «466»). Тот же приём,
+// которым при миграции 2026-08-27 резолвился классификатор по всей таблице
+// Inventory_book — здесь применяется live к самому децимальному номеру, без
+// обращения к таблице ESKD_Classifier (она не нужна: разбиение позиционное,
+// сам классификатор нужен был только чтобы ПОСТРОИТЬ статистику).
+function eskdCodesForDecimalNumber(decimalNumber) {
+  var m = String(decimalNumber || '').match(/\.(\d{6})(?:\.|$|-)/);
+  if (!m) return null;
+  var code = m[1];
+  return { classCode: code.slice(0, 2), subclassCode: code.slice(0, 3) };
+}
+
+// Пресет из Inventory_conf для конкретного компонента: подкласс приоритетнее
+// класса; null, если для данного компонента нет ни одной подходящей строки
+// (децимальный номер не распознан, либо для его класса пока нет статистики).
+function inventoryConfPresetForComponent(comp) {
+  var codes = comp ? eskdCodesForDecimalNumber(comp.decimal_number) : null;
+  if (!codes) return null;
+  if (INVENTORY_CONF_BY_SUBCLASS[codes.subclassCode]) return INVENTORY_CONF_BY_SUBCLASS[codes.subclassCode];
+  if (INVENTORY_CONF_BY_CLASS[codes.classCode]) return INVENTORY_CONF_BY_CLASS[codes.classCode];
+  return null;
+}
+
 function loadComponents() {
   state.componentsLoaded = false;
 
@@ -820,6 +921,7 @@ function loadComponents() {
     var counts = { cmp: 0, esp: 0, est: 0 };
     Object.keys(byId).forEach(function (k) { counts[byId[k].source] = (counts[byId[k].source] || 0) + 1; });
     console.log('[inventory-book] номенклатура загружена:', counts);
+    updateConnLabel();
     rebuildTreeForSelectedProduct();
     updateComputedFields();
   });
@@ -1079,14 +1181,20 @@ function collectDescendants(rootId) {
 }
 
 // Default checked doc-type columns (by label) per component role in the BOM
-// hierarchy. Узел сборки (has children, incl. the top-level product itself)
-// never gets "ЧД" (чертёж детали) — a part can't be something other
-// components are nested under; only a childless row is a "деталь".
+// hierarchy — FALLBACK only, used when the component's ЕСКД class has no
+// preset row in Inventory_conf (see inventoryConfPresetForComponent() above,
+// consulted first in defaultCodesForRow()). Узел сборки (has children, incl.
+// the top-level product itself) never gets "ЧД" (чертёж детали) — a part
+// can't be something other components are nested under; only a childless
+// row is a "деталь".
 var DEFAULT_CODES_TOP = ['СП', 'СБ', 'ГЧ', 'ТУ', 'РЭ', 'Д1', 'ПС', 'ВЭ', 'Э4', 'Э5'];
 var DEFAULT_CODES_ASSEMBLY = ['СП', 'СБ', 'ВП'];
 var DEFAULT_CODES_LEAF = ['ЧД'];
 
 function defaultCodesForRow(row) {
+  var comp = state.componentsById[row.id];
+  var preset = comp ? inventoryConfPresetForComponent(comp) : null;
+  if (preset) return preset;
   if (row.depth === 0) return DEFAULT_CODES_TOP;
   var hasChildren = (state.childrenByParent[row.id] || []).length > 0;
   return hasChildren ? DEFAULT_CODES_ASSEMBLY : DEFAULT_CODES_LEAF;
