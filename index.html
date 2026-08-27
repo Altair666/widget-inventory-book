@@ -121,6 +121,9 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .tree-layout.gen-expanded .tree-col{flex-basis:0;max-width:0;min-width:0;opacity:0;border-color:transparent;overflow:hidden;pointer-events:none}
 .tree-layout.gen-expanded .gen-col{flex:1 1 auto;max-width:2000px;min-width:0;margin-left:0}
 .tree-layout.gen-collapsed .gen-col{flex-basis:0;max-width:0;min-width:0;opacity:0;border-color:transparent;overflow:hidden;pointer-events:none}
+.tree-layout.split-mode .tree-col{flex:0 0 var(--split-tree-w,420px);max-width:none;min-width:220px;opacity:1;border-color:var(--brd)}
+.tree-layout.split-mode .gen-col{flex:1 1 0;max-width:none;min-width:220px;margin-left:0;opacity:1;border-color:var(--brd)}
+.tree-layout.split-mode.dragging-split .tree-col,.tree-layout.split-mode.dragging-split .gen-col{transition:none}
 .tree-col{flex:1 1 340px;min-width:340px;max-width:2000px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);max-height:360px;overflow:auto;transition:flex-basis .18s ease,max-width .18s ease,min-width .18s ease,opacity .16s ease,border-color .18s ease}
 .tree-empty{padding:16px;text-align:center;color:var(--tx3);font-size:12px}
 
@@ -159,8 +162,14 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .btn-transfer{width:30px;flex:1;min-height:60px;border:none;border-radius:var(--r);background:#16b378;color:#fff;font-size:15px;font-weight:600;letter-spacing:.05em;cursor:pointer;transition:opacity .15s,transform .1s}
 .btn-transfer:hover{opacity:.88}
 .btn-transfer:active{transform:scale(.98)}
+.btn-transfer:disabled{background:#9BB8AC;color:#F0F5F2;cursor:default;transform:none}
+.btn-transfer:disabled:hover{opacity:1}
 .btn-collapse-gen{width:30px;height:60px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:none;border-radius:var(--r);background:var(--surf3);color:var(--tx2);cursor:pointer;transition:all .12s}
 .btn-collapse-gen:hover{background:var(--acc-bg);color:var(--acc)}
+.btn-collapse-gen:disabled{opacity:.4;cursor:default}
+.btn-collapse-gen:disabled:hover{background:var(--surf3);color:var(--tx2)}
+.btn-split-drag{width:30px;height:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:none;border-radius:var(--r);background:var(--surf3);color:var(--tx3);cursor:col-resize;transition:all .12s}
+.btn-split-drag:hover,.btn-split-drag.dragging{background:var(--acc-bg);color:var(--acc)}
 
 .gen-col{border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);display:flex;flex-direction:column;max-height:360px;overflow:hidden;transition:flex-basis .18s ease,flex-grow .18s ease,max-width .18s ease,min-width .18s ease,margin-left .18s ease,opacity .16s ease,border-color .18s ease}
 .gen-list{overflow-y:auto;flex:1}
@@ -210,7 +219,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .cp-list{flex:1;overflow-y:auto;padding:4px 0;min-height:80px}
 .cp-item{display:flex;align-items:center;gap:8px;padding:5px 10px}
 .cp-item:hover{background:var(--surf2)}
-.cp-eye{flex-shrink:0;display:flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border:none;border-radius:4pt;background:transparent;color:var(--acc);cursor:pointer}
+.cp-eye{flex-shrink:0;display:flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border:none;border-radius:4pt;background:transparent;color:var(--grn);cursor:pointer}
 .cp-item.cp-hidden .cp-eye{color:var(--tx3)}
 .cp-item.cp-hidden .cp-label{color:var(--tx3)}
 .cp-label{flex:1;font-size:12px;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -220,10 +229,11 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .cp-reorder button:disabled{opacity:.3;cursor:default}
 .cp-empty{padding:14px;text-align:center;color:var(--tx3);font-size:12px}
 .cp-foot{padding:8px 12px;border-top:1px solid var(--brd);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;gap:8px}
-.cp-reset{border:none;background:none;padding:0;font-size:11px;color:var(--acc);cursor:pointer;text-decoration:underline;flex-shrink:0}
+.cp-reset{border:none;background:none;padding:0;font-size:11px;color:var(--grn);cursor:pointer;text-decoration:underline;flex-shrink:0}
 .cp-actions{display:flex;gap:8px}
 .cp-actions .btn-secondary,.cp-actions .btn-primary{padding:6px 12px}
-#sDocTypeNames{min-height:220px;font-family:var(--mono)}
+.cp-actions #cpOk{background:var(--grn)}
+#sDocTypeNames{min-height:60px;font-family:var(--mono)}
 
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -287,6 +297,9 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
           <button class="btn-collapse-gen" onclick="collapseGenExpanded()" title="Вернуть состав изделия, чтобы добавить ещё документов">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           </button>
+          <button class="btn-split-drag" id="btnSplitDrag" title="Перетащите, чтобы показать состав изделия и формируемый список одновременно">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8l4 4-4 4M6 8l-4 4 4 4M2 12h20"/></svg>
+          </button>
         </div>
         <div class="gen-col">
           <div class="gen-list" id="genList"><div class="gen-empty">Формируемый список документов пуст</div></div>
@@ -329,7 +342,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.46.0</footer>
+<footer class="ver-footer">v0.47.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -354,9 +367,9 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
       <span class="form-hint">Отдельная таблица технологической документации — тоже участвует в поиске изделия, но без дерева состава.</span>
     </div>
     <div class="form-group" style="margin-bottom:12px">
-      <label class="form-label">Названия типов документов</label>
+      <label class="form-label">Названия ЛУ/УД</label>
       <textarea class="form-textarea" id="sDocTypeNames"></textarea>
-      <span class="form-hint">По строке на тип: сокращение=полное название (напр. СБ=Сборочный чертёж). Используется для поля «Наименование». Проверьте и поправьте — часть названий проставлена по умолчанию и может не совпадать с принятой у вас номенклатурой.</span>
+      <span class="form-hint">По строке: ЛУ=Лист утверждения, УД=Удостоверяющий лист. Это сопутствующие листы (кнопки в ячейках дерева), а не строки таблицы Doc_types — поэтому их названия настраиваются только здесь. Названия остальных типов документов берутся из таблицы Doc_types, правьте их там.</span>
     </div>
   </div>
   <div class="panel-footer">
@@ -441,6 +454,13 @@ var DOC_TYPES_BUILTIN = [
 ];
 
 var DOC_TYPES = DOC_TYPES_BUILTIN.slice();
+// ЛУ/УД — сопутствующие листы к конкретному документу (кнопки tm-lu-btn в
+// ячейке дерева), не обычные типы документов из строк таблицы Doc_types —
+// они не обязаны там присутствовать. loadDocTypes() гарантирует, что оба
+// всегда остаются в DOC_TYPES (добавляя из DOC_TYPES_BUILTIN, если таблица
+// их не перечисляет), а их название по-прежнему можно переопределить через
+// настройки виджета (см. docTypeNameOverrides()/fullNameForDocType()).
+var WIDGET_ONLY_DOC_TYPE_LABELS = ['ЛУ', 'УД'];
 // label -> [{fullName, needsTail}, ...] — все варианты FullName для одной
 // метки из таблицы Doc_types (несколько строк с одинаковым Label, напр. два
 // варианта хвоста для Д1 — id 26 "Данные проектирования" и id 32 "Протокол
@@ -501,6 +521,8 @@ var state = {
   cellUD: {},            // componentId -> { docTypeLabel -> true } — companion "-УД" toggle per cell
   generatedList: [],     // [{compId, code, label, designation, format, formatOther, sheets, nameOverride}, ...] queued for bulk registration
   genExpanded: false,     // true = состав изделия свёрнут, формируемый список развёрнут почти на всю панель
+  splitMode: false,       // true = оба блока (состав изделия + формируемый список) видны одновременно, ширину задаёт splitTreeWidth
+  splitTreeWidth: null,   // px, ширина .tree-col в режиме split (личная настройка браузера, см. SPLIT_WIDTH_KEY)
   genNameEditIdx: null,   // индекс карточки в generatedList, для которой сейчас открыто редактирование наименования
 
   execCounter: 0,         // счётчик для уникальных id вручную добавленных исполнений (exec:<originId>:<n>)
@@ -605,7 +627,10 @@ function docTypeNameOverrides() {
     if (i === -1) return;
     var label = line.slice(0, i).trim();
     var name = line.slice(i + 1).trim();
-    if (name) map[label] = name;
+    // Ограничено ЛУ/УД: для остальных типов названия теперь берутся из
+    // таблицы Doc_types, старые/чужие строки в этом поле (в т.ч. записанные
+    // до появления таблицы) больше не должны её перекрывать.
+    if (name && WIDGET_ONLY_DOC_TYPE_LABELS.indexOf(label) !== -1) map[label] = name;
   });
   return map;
 }
@@ -618,7 +643,11 @@ function fullNameForDocType(label) {
 }
 
 function defaultDocTypeNamesText() {
-  return DOC_TYPES.map(function (dt) { return dt.label + '=' + dt.fullName; }).join('\n');
+  return WIDGET_ONLY_DOC_TYPE_LABELS.map(function (label) {
+    var dt = DOC_TYPES.filter(function (d) { return d.label === label; })[0]
+      || DOC_TYPES_BUILTIN.filter(function (d) { return d.label === label; })[0];
+    return label + '=' + (dt ? dt.fullName : '');
+  }).join('\n');
 }
 
 // changeNumberFloor is intentionally monotonic (only moves up): grist.onRecords
@@ -821,6 +850,11 @@ function loadDocTypes() {
       return;
     }
 
+    WIDGET_ONLY_DOC_TYPE_LABELS.forEach(function (label) {
+      if (byLabel[label]) return;
+      var builtin = DOC_TYPES_BUILTIN.filter(function (d) { return d.label === label; })[0];
+      if (builtin) columns.push(builtin);
+    });
     DOC_TYPES = columns;
     DOC_TYPE_VARIANTS = variants;
     console.log('[inventory-book] типы документов загружены из таблицы Doc_types: ' + columns.length + ' столбцов, ' + ids.length + ' строк');
@@ -1613,11 +1647,34 @@ function updateBomPanelVisibility() {
   // через primary_use изделия — та же причина, что и в selectProduct().
   var searchedComp = state.componentsById[state.searchedComponentId];
   var standalone = !!(searchedComp && searchedComp.source !== 'cmp');
+  var split = !standalone && !!state.splitMode;
   var layout = document.querySelector('.tree-layout');
   layout.classList.toggle('standalone', standalone);
-  layout.classList.toggle('gen-expanded', !standalone && !!state.genExpanded);
-  layout.classList.toggle('gen-collapsed', !standalone && !state.genExpanded);
-  updateRegisterButtonState(standalone);
+  layout.classList.toggle('split-mode', split);
+  layout.classList.toggle('gen-expanded', !standalone && !split && !!state.genExpanded);
+  layout.classList.toggle('gen-collapsed', !standalone && !split && !state.genExpanded);
+  layout.style.setProperty('--split-tree-w', (state.splitTreeWidth || 420) + 'px');
+  updateRegisterButtonState(standalone, split);
+  updateTransferButtonsState(standalone, split);
+}
+
+// «»»/«←» осмысленны только при бинарном переключении (одна страница видна
+// целиком за раз) — «»» уже нечего переносить, если формируемый список уже
+// развёрнут, «←» уже нечего сворачивать, если и так виден состав изделия.
+// В split-режиме видно и то, и другое одновременно — обе кнопки остаются
+// рабочими (»» по-прежнему добавляет отмеченное в список, ← выходит из
+// split обратно на полный состав изделия, см. collapseGenExpanded()).
+function updateTransferButtonsState(standalone, split) {
+  var transferBtn = document.querySelector('.btn-transfer');
+  var collapseBtn = document.querySelector('.btn-collapse-gen');
+  if (!transferBtn || !collapseBtn) return;
+  if (standalone || split) {
+    transferBtn.disabled = false;
+    collapseBtn.disabled = false;
+    return;
+  }
+  transferBtn.disabled = !!state.genExpanded;
+  collapseBtn.disabled = !state.genExpanded;
 }
 
 // «Зарегистрировать документы» относится к сформированному списку (после
@@ -1629,18 +1686,62 @@ function updateBomPanelVisibility() {
 // нет вообще (скрыто через .standalone .gen-transfer{display:none}), сам
 // документ сразу кладётся в generatedList в selectProduct() — там кнопка
 // должна работать как раньше, зависеть только от непустого списка.
-function updateRegisterButtonState(standalone) {
+function updateRegisterButtonState(standalone, split) {
   var btn = document.getElementById('btnRegisterBatch');
   if (!btn) return;
-  btn.disabled = !state.generatedList.length || (!standalone && !state.genExpanded);
+  btn.disabled = !state.generatedList.length || (!standalone && !split && !state.genExpanded);
 }
 
 // Сворачивает формируемый список обратно, возвращает состав изделия на всю
 // ширину — чтобы можно было доотметить ещё компонентов и снова нажать «»».
+// Заодно выходит из split-режима (см. btnSplitDrag ниже) — «←» это
+// единственный явный способ вернуться к полноширинному составу изделия.
 function collapseGenExpanded() {
   state.genExpanded = false;
+  state.splitMode = false;
   updateBomPanelVisibility();
 }
+
+// Ширина .tree-col в split-режиме — личная настройка браузера (как colPrefs),
+// не документа, поэтому localStorage, а не grist.setOption.
+var SPLIT_WIDTH_KEY = 'invBook.splitTreeWidth.v1';
+(function loadSplitWidth() {
+  try {
+    var raw = parseInt(localStorage.getItem(SPLIT_WIDTH_KEY), 10);
+    if (raw > 0) state.splitTreeWidth = raw;
+  } catch (e) { /* localStorage недоступен — используем дефолт */ }
+})();
+
+(function initSplitDrag() {
+  var handle = document.getElementById('btnSplitDrag');
+  if (!handle) return;
+  handle.addEventListener('mousedown', function (e) {
+    e.preventDefault();
+    var layout = document.querySelector('.tree-layout');
+    var treeCol = document.querySelector('.tree-col');
+    if (!layout || !treeCol || layout.classList.contains('standalone')) return;
+    var startX = e.pageX;
+    var startWidth = treeCol.getBoundingClientRect().width;
+    state.splitMode = true;
+    updateBomPanelVisibility();
+    layout.classList.add('dragging-split');
+    handle.classList.add('dragging');
+    function onMove(ev) {
+      var w = Math.max(220, Math.min(900, Math.round(startWidth + (ev.pageX - startX))));
+      state.splitTreeWidth = w;
+      layout.style.setProperty('--split-tree-w', w + 'px');
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      layout.classList.remove('dragging-split');
+      handle.classList.remove('dragging');
+      try { localStorage.setItem(SPLIT_WIDTH_KEY, String(state.splitTreeWidth)); } catch (e) { /* нечего сохранять — переживёт только текущую сессию */ }
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+})();
 
 // ---------- Generated document list (queued for bulk registration) ----------
 
