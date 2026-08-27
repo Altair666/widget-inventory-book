@@ -41,7 +41,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .reg-year-bar::-webkit-scrollbar{display:none}
 .reg-year-chip{flex-shrink:0;font-family:var(--mono);font-size:10px;padding:2px 9px;border-radius:10px;background:var(--surf3);color:var(--tx2);cursor:pointer;border:1px solid transparent;white-space:nowrap;user-select:none;transition:all .12s}
 .reg-year-chip:hover{background:var(--brd2)}
-.reg-year-chip.active{background:var(--acc-bg);color:var(--acc);border-color:var(--acc-brd)}
+.reg-year-chip.active{background:var(--grn-bg);color:var(--grn);border-color:var(--grn-brd)}
 .reg-year-scroll-btn{position:static;flex-shrink:0;width:18px;height:18px;transform:none}
 .pb{padding:10px 12px}
 
@@ -85,16 +85,22 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .btn-primary:hover{opacity:.9}
 .btn-primary:disabled{opacity:.35;cursor:not-allowed}
 
-/* overflow-y:visible ОБЯЗАТЕЛЕН рядом с overflow-x:auto: если задать только
-   overflow-x, спецификация CSS требует, чтобы вычисленный overflow-y тоже
-   стал auto — #regBody тогда сам становится скролл-контейнером (даже не
-   имея вертикального переполнения) и превращается в контекст позиционирования
-   для position:sticky у .reg-table th ВНУТРИ себя, а не у реального скролл-
-   контейнера страницы (.main) — из-за этого шапка таблицы переставала быть
-   липкой и просто прокручивалась вместе со страницей. */
-#regBody{overflow-x:auto;overflow-y:visible}
-.reg-scroll-btn{border-radius:50%;border:1px solid var(--brd);background:var(--surf);color:var(--acc);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.16);transition:opacity .15s ease,visibility .15s ease}
-.reg-scroll-btn:hover{background:var(--acc-bg);border-color:var(--acc)}
+/* НЕ задавать overflow-x:auto здесь. .reg-table — table-layout:fixed с
+   colgroup в %, поэтому горизонтальный скролл ей не нужен (ширина всегда
+   равна ширине контейнера). А по спецификации CSS: если overflow-x — НЕ
+   visible (auto/hidden/scroll), а overflow-y — visible, то вычисленный
+   overflow-y всё равно принудительно становится auto (правило действует
+   независимо от того, какая из осей visible, а какая нет) — #regBody тогда
+   сам становится контекстом позиционирования для position:sticky у
+   .reg-table th ВНУТРИ себя, а не у реального скролл-контейнера страницы
+   (.main), и шапка таблицы (position:sticky;top:77px, рассчитанный
+   относительно .main) переставала быть липкой. Раньше здесь стояло
+   overflow-x:auto;overflow-y:visible — это НЕ решало проблему (см. правило
+   выше), а лишь маскировало её. Без overflow вовсе #regBody не создаёт
+   собственного скролл-контекста, и .main остаётся единственным контейнером
+   для sticky у .ph.reg-ph/.reg-filter-bar/.reg-table th. */
+.reg-scroll-btn{border-radius:50%;border:1px solid var(--brd);background:var(--surf);color:var(--grn);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.16);transition:opacity .15s ease,visibility .15s ease}
+.reg-scroll-btn:hover{background:var(--grn-bg);border-color:var(--grn)}
 .reg-scroll-btn.hidden{opacity:0;visibility:hidden;pointer-events:none}
 .reg-table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
 .reg-table th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);padding:5px 8px;border-bottom:2px solid var(--brd);text-align:center;background:var(--surf2);white-space:nowrap;position:sticky;top:77px;z-index:3}
@@ -149,7 +155,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .tree-matrix{border-collapse:collapse;font-size:12px;white-space:nowrap}
 .tree-matrix th,.tree-matrix td{border-bottom:1px solid var(--brd);padding:4px 6px;text-align:center;vertical-align:middle}
 .tree-matrix thead th{position:sticky;top:0;background:var(--surf);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--tx2);border-bottom:2px solid var(--brd);z-index:1}
-.tree-matrix th.tm-name,.tree-matrix td.tm-name{text-align:left;white-space:nowrap;position:sticky;left:0;background:var(--surf);z-index:2;min-width:500px}
+.tree-matrix th.tm-name,.tree-matrix td.tm-name{text-align:left;white-space:nowrap;position:sticky;left:0;background:var(--surf);z-index:2;min-width:260px}
 .tree-matrix thead th.tm-name{z-index:3}
 .tm-th-name-row{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%}
 .tm-cols-btn{display:flex;align-items:center;justify-content:center;width:17px;height:17px;flex-shrink:0;border:none;border-radius:3px;background:transparent;color:#16b378;cursor:pointer;padding:0;opacity:1;transition:all .12s}
@@ -201,7 +207,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .gen-card-content{display:flex;align-items:center;flex-wrap:nowrap;gap:4px;flex:1 1 auto;min-width:0}
 .gen-card-designation{font-family:var(--mono);font-size:12px;color:var(--acc);white-space:nowrap;flex-shrink:0;width:150px;overflow:hidden;text-overflow:ellipsis}
 .gen-card-name{flex:1 1 auto;min-width:0;font-size:12px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3}
-.gen-card-name-wrap{flex:1 1 120px;min-width:120px;display:flex;align-items:center;gap:3px}
+.gen-card-name-wrap{flex:1 1 180px;min-width:180px;display:flex;align-items:center;gap:3px}
 .gen-card-name-wrap .cell-edit-btn{flex-shrink:0}
 .gen-tail-edit-btn{margin-left:auto}
 .gen-card-name-input{height:24px;font-size:12px}
@@ -251,7 +257,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
    JS (updateGenCardDegradation, ResizeObserver на .gen-col) по РЕАЛЬНО
    измеренному переполнению .gen-card-content (scrollWidth>clientWidth),
    поэтому оверфлоу физически невозможен независимо от точности порогов:
-   1) без стадии, непрерывно — .gen-card-name-wrap (flex:1 1 120px)
+   1) без стадии, непрерывно — .gen-card-name-wrap (flex:1 1 180px)
       единственный "резиновый" элемент в строке (designation и controls
       flex-shrink:0), поэтому по мере сужения он первым отдаёт ширину —
       наименование переходит на 2 строки (line-clamp) раньше всего;
@@ -336,10 +342,13 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .cp-item.cp-hidden .cp-eye{color:var(--tx3)}
 .cp-item.cp-hidden .cp-label{color:var(--tx3)}
 .cp-label{flex:1;font-size:12px;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cp-reorder{display:flex;gap:2px;flex-shrink:0}
-.cp-reorder button{width:20px;height:20px;padding:0;border:1px solid var(--brd);border-radius:3px;background:var(--surf);color:var(--tx3);cursor:pointer;display:flex;align-items:center;justify-content:center}
-.cp-reorder button:hover:not(:disabled){border-color:var(--acc);color:var(--acc)}
-.cp-reorder button:disabled{opacity:.3;cursor:default}
+.cp-order-input{flex-shrink:0;width:30px;height:22px;border:1px solid var(--brd);border-radius:3px;background:var(--surf);color:var(--tx);font-family:var(--mono);font-size:11px;text-align:center;-moz-appearance:textfield}
+.cp-order-input::-webkit-outer-spin-button,.cp-order-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.cp-order-input:focus{border-color:var(--acc);outline:none}
+.cp-drag{flex-shrink:0;display:flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:3px;background:transparent;color:var(--tx3);cursor:grab}
+.cp-drag:hover{background:var(--surf2);color:var(--tx2)}
+.cp-item.cp-dragging{opacity:.4}
+.cp-item.cp-drag-over{box-shadow:inset 0 2px 0 var(--grn)}
 .cp-empty{padding:14px;text-align:center;color:var(--tx3);font-size:12px}
 .cp-foot{padding:8px 12px;border-top:1px solid var(--brd);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;gap:8px}
 .cp-reset{border:none;background:none;padding:0;font-size:11px;color:var(--grn);cursor:pointer;text-decoration:underline;flex-shrink:0}
@@ -464,7 +473,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.61.0</footer>
+<footer class="ver-footer">v0.62.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -2944,8 +2953,7 @@ function xSvg() { return '<svg width="12" height="12" viewBox="0 0 24 24" fill="
 function filterSvg() { return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h18l-7 9v6l-4 2v-8z"/></svg>'; }
 function eyeSvg() { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>'; }
 function eyeOffSvg() { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a20.3 20.3 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a20.3 20.3 0 0 1-2.66 3.79M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>'; }
-function upSvg() { return '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 15 12 9 6 15"/></svg>'; }
-function downSvg() { return '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>'; }
+function gripSvg() { return '<svg width="10" height="14" viewBox="0 0 10 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="1" x2="3" y2="13"/><line x1="7" y1="1" x2="7" y2="13"/></svg>'; }
 
 // ---------- Settings ----------
 
@@ -2996,8 +3004,10 @@ document.getElementById('settingsSave').addEventListener('click', function () {
 var colPanel = document.getElementById('colPanel');
 var cpSearch = document.getElementById('cpSearch');
 var cpList = document.getElementById('cpList');
-var cpDraft = null;         // {order:[label,...], hidden:{label:true}, shown:{label:true}} — черновик, применяется только по OK
+var cpDraft = null;         // {order:[label,...], hidden:{label:true}, shown:{label:true}} — order применяется сразу
+                             // (см. applyColOrderLive), hidden/shown остаются черновиком до OK
 var cpCheckedByLabel = {};  // снимок "в каких столбцах вообще есть отметки" на момент открытия панели
+var draggedColLabel = null; // label столбца, который сейчас тащат за cp-drag (drag&drop в списке колонок)
 
 function openColPanel() {
   cpCheckedByLabel = checkedByLabelForTree();
@@ -3016,13 +3026,25 @@ function closeColPanel() {
   colPanel.classList.remove('on');
 }
 
-function moveColDraft(label, delta) {
+// Порядок столбцов применяется сразу к таблице матрицы состава (не ждёт OK) —
+// в отличие от видимости (hidden/shown), которая остаётся черновиком.
+function applyColOrderLive() {
+  state.colOrder = cpDraft.order.slice();
+  saveColPrefs();
+  renderTree();
+  renderColPanelList();
+}
+
+function moveColDraftToPosition(label, newIndex) {
   var arr = cpDraft.order;
   var i = arr.indexOf(label);
-  var j = i + delta;
-  if (i === -1 || j < 0 || j >= arr.length) return;
-  var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
-  renderColPanelList();
+  if (i === -1) return;
+  if (newIndex < 0) newIndex = 0;
+  if (newIndex > arr.length - 1) newIndex = arr.length - 1;
+  if (newIndex === i) return;
+  arr.splice(i, 1);
+  arr.splice(newIndex, 0, label);
+  applyColOrderLive();
 }
 
 function renderColPanelList() {
@@ -3059,17 +3081,58 @@ function renderColPanelList() {
     lbl.className = 'cp-label';
     lbl.textContent = label + (full ? ' — ' + full : '');
 
-    var reorder = document.createElement('span');
-    reorder.className = 'cp-reorder';
-    var upBtn = document.createElement('button');
-    upBtn.type = 'button'; upBtn.innerHTML = upSvg(); upBtn.title = 'Выше'; upBtn.disabled = (idx === 0);
-    upBtn.addEventListener('click', function () { moveColDraft(label, -1); });
-    var downBtn = document.createElement('button');
-    downBtn.type = 'button'; downBtn.innerHTML = downSvg(); downBtn.title = 'Ниже'; downBtn.disabled = (idx === labels.length - 1);
-    downBtn.addEventListener('click', function () { moveColDraft(label, 1); });
-    reorder.appendChild(upBtn); reorder.appendChild(downBtn);
+    var orderInput = document.createElement('input');
+    orderInput.type = 'number';
+    orderInput.className = 'cp-order-input';
+    orderInput.min = '1'; orderInput.max = String(labels.length);
+    orderInput.value = String(idx + 1);
+    orderInput.title = 'Порядковый номер столбца';
+    orderInput.addEventListener('change', function () {
+      var n = parseInt(orderInput.value, 10);
+      if (!n || n < 1) n = 1;
+      moveColDraftToPosition(label, n - 1);
+    });
+    orderInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') orderInput.blur(); });
 
-    item.appendChild(eyeBtn); item.appendChild(lbl); item.appendChild(reorder);
+    var dragHandle = document.createElement('span');
+    dragHandle.className = 'cp-drag';
+    dragHandle.title = 'Перетащить для изменения порядка';
+    dragHandle.draggable = true;
+    dragHandle.innerHTML = gripSvg();
+    dragHandle.addEventListener('dragstart', function (e) {
+      draggedColLabel = label;
+      item.classList.add('cp-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', label);
+    });
+    dragHandle.addEventListener('dragend', function () {
+      item.classList.remove('cp-dragging');
+      draggedColLabel = null;
+    });
+
+    item.addEventListener('dragover', function (e) {
+      if (!draggedColLabel || draggedColLabel === label) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      item.classList.add('cp-drag-over');
+    });
+    item.addEventListener('dragleave', function () { item.classList.remove('cp-drag-over'); });
+    item.addEventListener('drop', function (e) {
+      e.preventDefault();
+      item.classList.remove('cp-drag-over');
+      var dragged = draggedColLabel;
+      draggedColLabel = null;
+      if (!dragged || dragged === label) return;
+      var arr = cpDraft.order;
+      var from = arr.indexOf(dragged);
+      var to = arr.indexOf(label);
+      if (from === -1 || to === -1) return;
+      arr.splice(from, 1);
+      arr.splice(to, 0, dragged);
+      applyColOrderLive();
+    });
+
+    item.appendChild(eyeBtn); item.appendChild(lbl); item.appendChild(orderInput); item.appendChild(dragHandle);
     cpList.appendChild(item);
   });
   if (!shownCount) cpList.innerHTML = '<div class="cp-empty">Ничего не найдено</div>';
@@ -3081,7 +3144,7 @@ document.getElementById('cpReset').addEventListener('click', function () {
   cpDraft.order = DOC_TYPES.map(function (d) { return d.label; });
   cpDraft.hidden = {};
   cpDraft.shown = {};
-  renderColPanelList();
+  applyColOrderLive();
 });
 document.getElementById('cpOk').addEventListener('click', function () {
   state.colOrder = cpDraft.order.slice();
