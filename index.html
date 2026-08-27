@@ -171,6 +171,9 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .gen-card-name-input{height:26px;font-size:11px}
 .gen-card-name-wrap .gen-card-name-input{flex:1 1 60px;min-width:60px;width:auto}
 .gen-card-name-base{flex:0 1 auto;min-width:0;max-width:45%;font-size:11px;color:var(--tx-muted,#888);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gen-tail-select{flex:1 1 90px;min-width:70px;height:22px;font-size:11px;font-family:inherit;color:var(--tx);background:var(--surf);border:1px solid var(--brd);border-radius:3px;padding:0 3px;cursor:pointer}
+.gen-tail-select:hover{border-color:var(--acc)}
+.gen-tail-custom-input{flex:1 1 90px;min-width:70px;height:22px;font-size:11px}
 .gen-card-box{display:flex;align-items:center;justify-content:center;gap:5px;height:28px;width:132px;padding:0 8px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf);flex-shrink:0}
 .gen-card-box-label{font-size:11px;font-weight:400;color:var(--tx);white-space:nowrap}
 .gen-card-box select,.gen-card-box input{border:none;background:transparent;padding:0;height:auto;font-family:inherit;font-size:11px;color:var(--tx);outline:none}
@@ -297,7 +300,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.42.0</footer>
+<footer class="ver-footer">v0.43.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -396,9 +399,11 @@ var DOC_TYPES_BUILTIN = [
 var DOC_TYPES = DOC_TYPES_BUILTIN.slice();
 // label -> [{fullName, needsTail}, ...] — все варианты FullName для одной
 // метки из таблицы Doc_types (несколько строк с одинаковым Label, напр. два
-// варианта хвоста для Д1). Заполняется в loadDocTypes(); используется пока
-// только для fullNameForDocType() (берёт первый вариант) — карандашик с
-// выбором варианта хвоста (Д1-Д6) относится к отдельной задаче.
+// варианта хвоста для Д1 — id 26 "Данные проектирования" и id 32 "Протокол
+// информационного взаимодействия", оба попадают в список без дедупликации).
+// Заполняется в loadDocTypes(); fullNameForDocType() берёт из него первый
+// вариант как значение по умолчанию, а select хвоста в renderGenList()
+// показывает все варианты сразу.
 var DOC_TYPE_VARIANTS = {};
 // Реальный resolved id таблицы Doc_types в документе (может отличаться
 // регистром от кандидатов DOC_TYPES_TABLE_CANDIDATES) — нужен для записи
@@ -1551,90 +1556,110 @@ function renderGenList() {
 
     var nameWrap = document.createElement('span');
     nameWrap.className = 'gen-card-name-wrap';
-    // Гибридный карандашик: для типов документов со свободным хвостом
-    // (Д1-Д4, NeedsTail=true в Doc_types) базовая часть наименования
-    // (изделие/узел) остаётся динамической ссылкой (NameNode/ProductName —
-    // см. nameFieldsForItem), а редактируется только хвост, который пишется
-    // в NameTail как обычный текст. Полная перезапись всего наименования
-    // (nameOverride) для таких строк недоступна — она обнулила бы ссылки.
+    // Для типов документов со свободным хвостом (Д1-Д4, NeedsTail=true в
+    // Doc_types) базовая часть наименования (изделие/узел) остаётся
+    // динамической ссылкой (NameNode/ProductName — см. nameFieldsForItem),
+    // а хвост выбирается/печатается прямо в превью через <select> (клик на
+    // текст хвоста), без входа в режим редактирования карандашом. Карандаш
+    // всегда означает полную перезапись всей строки (nameOverride) — это
+    // отдельная, не связанная с хвостом операция, доступная для любых строк.
     var genComp = state.componentsById[item.compId];
     var genDtEntry = DOC_TYPES.filter(function (d) { return d.label === item.label; })[0];
     var isHybridTail = !!(genDtEntry && genDtEntry.needsTail && genComp && genComp.source === 'cmp' &&
       item.nameOverride == null && item.presetName == null);
     if (state.genNameEditIdx === idx) {
-      if (isHybridTail) {
-        var baseText = nameForItem(Object.assign({}, item, { tailOverride: '' }));
-        var basePrefix = document.createElement('span');
-        basePrefix.className = 'gen-card-name-base'; basePrefix.textContent = baseText + '. ';
-        nameWrap.appendChild(basePrefix);
-        var tailInput = document.createElement('input');
-        tailInput.className = 'gen-card-name-input form-input';
-        tailInput.value = (item.tailOverride != null) ? item.tailOverride : fullNameForDocType(genDtEntry.label);
-        // Список ранее использованных хвостов для этой метки (DOC_TYPE_VARIANTS,
-        // включая только что созданные в этой же сессии — см. ensureDocTypeVariant)
-        // — стрелкой выбрать готовый вариант или напечатать свой, он попадёт в
-        // каталог при регистрации.
-        var tailListId = 'genTailList' + idx;
-        var tailList = document.createElement('datalist');
-        tailList.id = tailListId;
-        (DOC_TYPE_VARIANTS[genDtEntry.label] || []).forEach(function (v) {
-          var optText = String(v.fullName || '').trim();
-          if (!optText) return;
-          var opt = document.createElement('option');
-          opt.value = optText;
-          tailList.appendChild(opt);
-        });
-        tailInput.setAttribute('list', tailListId);
-        nameWrap.appendChild(tailList);
-        nameWrap.appendChild(tailInput);
-        var tailSaveBtn = iconButton('cell-edit-btn save', checkSvg(), 'Сохранить хвост наименования');
-        var tailCancelBtn = iconButton('cell-edit-btn cancel', xSvg(), 'Отмена');
-        tailSaveBtn.addEventListener('click', function () {
-          item.tailOverride = tailInput.value.trim() || null;
-          state.genNameEditIdx = null;
-          renderGenList();
-        });
-        tailCancelBtn.addEventListener('click', function () {
-          state.genNameEditIdx = null;
-          renderGenList();
-        });
-        tailInput.addEventListener('keydown', function (e) {
-          if (e.key === 'Enter') tailSaveBtn.click();
-          if (e.key === 'Escape') tailCancelBtn.click();
-        });
-        nameWrap.appendChild(tailSaveBtn);
-        nameWrap.appendChild(tailCancelBtn);
-        setTimeout(function () { tailInput.focus(); tailInput.select(); }, 0);
-      } else {
-        var nameInput = document.createElement('input');
-        nameInput.className = 'gen-card-name-input form-input';
-        nameInput.value = nameForItem(item);
-        nameWrap.appendChild(nameInput);
-        var nameSaveBtn = iconButton('cell-edit-btn save', checkSvg(), 'Сохранить наименование');
-        var nameCancelBtn = iconButton('cell-edit-btn cancel', xSvg(), 'Отмена');
-        nameSaveBtn.addEventListener('click', function () {
-          item.nameOverride = nameInput.value.trim() || null;
-          state.genNameEditIdx = null;
-          renderGenList();
-        });
-        nameCancelBtn.addEventListener('click', function () {
-          state.genNameEditIdx = null;
-          renderGenList();
-        });
-        nameInput.addEventListener('keydown', function (e) {
-          if (e.key === 'Enter') nameSaveBtn.click();
-          if (e.key === 'Escape') nameCancelBtn.click();
-        });
-        nameWrap.appendChild(nameSaveBtn);
-        nameWrap.appendChild(nameCancelBtn);
-        setTimeout(function () { nameInput.focus(); nameInput.select(); }, 0);
-      }
+      var nameInput = document.createElement('input');
+      nameInput.className = 'gen-card-name-input form-input';
+      nameInput.value = nameForItem(item);
+      nameWrap.appendChild(nameInput);
+      var nameSaveBtn = iconButton('cell-edit-btn save', checkSvg(), 'Сохранить наименование');
+      var nameCancelBtn = iconButton('cell-edit-btn cancel', xSvg(), 'Отмена');
+      nameSaveBtn.addEventListener('click', function () {
+        item.nameOverride = nameInput.value.trim() || null;
+        state.genNameEditIdx = null;
+        renderGenList();
+      });
+      nameCancelBtn.addEventListener('click', function () {
+        state.genNameEditIdx = null;
+        renderGenList();
+      });
+      nameInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') nameSaveBtn.click();
+        if (e.key === 'Escape') nameCancelBtn.click();
+      });
+      nameWrap.appendChild(nameSaveBtn);
+      nameWrap.appendChild(nameCancelBtn);
+      setTimeout(function () { nameInput.focus(); nameInput.select(); }, 0);
+    } else if (isHybridTail) {
+      var baseText = nameForItem(Object.assign({}, item, { tailOverride: '' }));
+      var basePrefix = document.createElement('span');
+      basePrefix.className = 'gen-card-name-base'; basePrefix.textContent = baseText + '. ';
+      basePrefix.title = nameForItem(item);
+      nameWrap.appendChild(basePrefix);
+
+      var currentTail = (item.tailOverride != null && item.tailOverride !== '')
+        ? item.tailOverride : fullNameForDocType(genDtEntry.label);
+      var tailVariants = DOC_TYPE_VARIANTS[genDtEntry.label] || [];
+      var CUSTOM_TAIL_VALUE = '__custom__';
+      var matchesVariant = tailVariants.some(function (v) {
+        return String(v.fullName || '').trim().toLowerCase() === String(currentTail).trim().toLowerCase();
+      });
+
+      var tailSelect = document.createElement('select');
+      tailSelect.className = 'gen-tail-select';
+      tailSelect.title = 'Выбрать вариант хвоста наименования из каталога';
+      tailVariants.forEach(function (v) {
+        var optText = String(v.fullName || '').trim();
+        if (!optText) return;
+        var opt = document.createElement('option');
+        opt.value = optText; opt.textContent = optText;
+        tailSelect.appendChild(opt);
+      });
+      var customOpt = document.createElement('option');
+      customOpt.value = CUSTOM_TAIL_VALUE; customOpt.textContent = 'Свой вариант…';
+      tailSelect.appendChild(customOpt);
+      tailSelect.value = matchesVariant ? currentTail : CUSTOM_TAIL_VALUE;
+
+      var tailCustomInput = document.createElement('input');
+      tailCustomInput.className = 'gen-tail-custom-input form-input';
+      tailCustomInput.placeholder = 'Свой текст хвоста';
+      tailCustomInput.value = currentTail;
+      tailCustomInput.style.display = matchesVariant ? 'none' : '';
+
+      tailSelect.addEventListener('change', function () {
+        if (tailSelect.value === CUSTOM_TAIL_VALUE) {
+          tailCustomInput.style.display = '';
+          tailCustomInput.value = (item.tailOverride != null) ? item.tailOverride : '';
+          tailCustomInput.focus();
+        } else {
+          tailCustomInput.style.display = 'none';
+          item.tailOverride = tailSelect.value;
+        }
+      });
+      tailCustomInput.addEventListener('input', function () {
+        // Пишем прямо в item.tailOverride без перерисовки списка на каждое
+        // нажатие клавиши — renderGenList() пересобрал бы DOM и сбросил фокус.
+        item.tailOverride = tailCustomInput.value;
+      });
+      tailCustomInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') tailCustomInput.blur();
+      });
+
+      nameWrap.appendChild(tailSelect);
+      nameWrap.appendChild(tailCustomInput);
+
+      var nameEditBtn = iconButton('cell-edit-btn', pencilSvg(), 'Изменить наименование полностью');
+      nameEditBtn.addEventListener('click', function () {
+        state.genNameEditIdx = idx;
+        renderGenList();
+      });
+      nameWrap.appendChild(nameEditBtn);
     } else {
       var nameSpan = document.createElement('span');
       nameSpan.className = 'gen-card-name'; nameSpan.textContent = nameForItem(item);
       nameSpan.title = nameForItem(item);
       nameWrap.appendChild(nameSpan);
-      var nameEditBtn = iconButton('cell-edit-btn', pencilSvg(), isHybridTail ? 'Изменить хвост наименования' : 'Изменить наименование');
+      var nameEditBtn = iconButton('cell-edit-btn', pencilSvg(), 'Изменить наименование');
       nameEditBtn.addEventListener('click', function () {
         state.genNameEditIdx = idx;
         renderGenList();
