@@ -77,20 +77,20 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .btn-primary:disabled{opacity:.35;cursor:not-allowed}
 
 #regBody{overflow-x:auto}
-.reg-table{width:100%;border-collapse:collapse;font-size:12px}
+.reg-table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
 .reg-table th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);padding:5px 8px;border-bottom:2px solid var(--brd);text-align:center;background:var(--surf2);white-space:nowrap}
 .reg-table td{padding:6px 8px;border-bottom:1px solid var(--brd);vertical-align:top;text-align:center}
 .reg-table tr:last-child td{border-bottom:none}
 .reg-table tr:hover td{background:var(--surf2)}
-.reg-dn{font-family:var(--mono);font-size:11px;color:var(--acc);white-space:nowrap;width:62px}
+.reg-dn{font-family:var(--mono);font-size:11px;color:var(--acc);white-space:nowrap}
 .reg-mono{font-family:var(--mono);font-size:11px;white-space:nowrap}
-.reg-date{width:62px;white-space:nowrap}
-.reg-chg{width:40px;white-space:nowrap}
-.reg-sheets{width:40px;white-space:nowrap}
-.reg-format{width:52px;white-space:nowrap}
-.reg-name{text-align:left;white-space:normal;max-width:170px;word-break:break-word;overflow-wrap:anywhere}
-.reg-file{text-align:left;white-space:normal;max-width:150px;word-break:break-word;overflow-wrap:anywhere;font-family:var(--mono);font-size:11px}
-.reg-reason{text-align:left;max-width:280px;word-break:break-word;overflow-wrap:anywhere}
+.reg-date{white-space:nowrap}
+.reg-chg{white-space:nowrap}
+.reg-sheets{white-space:nowrap}
+.reg-format{white-space:nowrap}
+.reg-name{text-align:left;white-space:normal;word-break:break-word;overflow-wrap:anywhere}
+.reg-file{text-align:left;white-space:normal;word-break:break-word;overflow-wrap:anywhere;font-family:var(--mono);font-size:11px}
+.reg-reason{text-align:left;white-space:normal;word-break:break-word;overflow-wrap:anywhere}
 .reg-note-text{white-space:pre-wrap}
 .reg-note-text.clamped{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 .reg-note-toggle{margin-top:2px;padding:0;border:none;background:none;font-size:10px;color:var(--acc);cursor:pointer;text-decoration:underline}
@@ -130,19 +130,19 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .tree-matrix th.tm-name,.tree-matrix td.tm-name{text-align:left;white-space:nowrap;position:sticky;left:0;background:var(--surf);z-index:2;min-width:260px}
 .tree-matrix thead th.tm-name{z-index:3}
 .tm-th-name-row{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%}
-.tm-cols-btn{display:flex;align-items:center;justify-content:center;width:17px;height:17px;flex-shrink:0;border:none;border-radius:3px;background:transparent;color:var(--tx3);cursor:pointer;padding:0;opacity:.6;transition:all .12s}
-.tm-cols-btn:hover{opacity:1;background:var(--acc-bg);color:var(--acc)}
+.tm-cols-btn{display:flex;align-items:center;justify-content:center;width:17px;height:17px;flex-shrink:0;border:none;border-radius:3px;background:transparent;color:#16b378;cursor:pointer;padding:0;opacity:1;transition:all .12s}
+.tm-cols-btn:hover{opacity:1;background:var(--grn-bg);color:#0d8a5c}
 .tm-name-row{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%}
 .tm-name-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .tree-matrix tbody tr:hover td{background:var(--grn-bg)}
 .tree-matrix tbody tr:last-child td{border-bottom:none}
 .tree-dn{font-family:var(--mono);font-size:12px;color:var(--acc)}
 .tree-name{font-size:12px;color:var(--tx2)}
-.tree-matrix td.tm-cb input{width:14px;height:14px;cursor:pointer;accent-color:var(--acc)}
+.tree-matrix td.tm-cb input{width:14px;height:14px;cursor:pointer;accent-color:var(--grn)}
 .tm-cell{display:inline-flex;align-items:center;justify-content:center;gap:3px}
 .tm-lu-btn{width:14px;height:14px;padding:0;border:1px solid var(--brd);border-radius:2px;background:var(--surf);color:var(--tx3);font-size:8px;font-weight:700;line-height:12px;letter-spacing:-.03em;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .tm-lu-btn:hover{border-color:var(--acc)}
-.tm-lu-btn.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.tm-lu-btn.on{background:var(--grn);border-color:var(--grn);color:#fff}
 .tree-matrix tbody td.tm-col-hover,.tree-matrix thead th.tm-col-hover{background:var(--grn-bg)}
 
 .tm-add-exec-btn{display:flex;align-items:center;justify-content:center;width:16px;height:16px;flex-shrink:0;border:1px solid var(--grn-brd);border-radius:3px;background:var(--grn-bg);color:var(--grn);cursor:pointer;padding:0;transition:all .12s}
@@ -162,10 +162,10 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .btn-collapse-gen{width:30px;height:60px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:none;border-radius:var(--r);background:var(--surf3);color:var(--tx2);cursor:pointer;transition:all .12s}
 .btn-collapse-gen:hover{background:var(--acc-bg);color:var(--acc)}
 
-.gen-col{border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);display:flex;flex-direction:column;max-height:360px;transition:flex-basis .18s ease,flex-grow .18s ease,max-width .18s ease,min-width .18s ease,margin-left .18s ease,opacity .16s ease,border-color .18s ease}
+.gen-col{border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);display:flex;flex-direction:column;max-height:360px;overflow:hidden;transition:flex-basis .18s ease,flex-grow .18s ease,max-width .18s ease,min-width .18s ease,margin-left .18s ease,opacity .16s ease,border-color .18s ease}
 .gen-list{overflow-y:auto;flex:1}
 .gen-empty{padding:14px;text-align:center;color:var(--tx3);font-size:11px}
-.gen-card{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:6px 8px;border-bottom:1px solid var(--brd)}
+.gen-card{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:6px 8px 6px 16px;border-bottom:1px solid var(--brd)}
 .gen-card:last-child{border-bottom:none}
 .gen-card:hover{background:var(--grn-bg)}
 .gen-card-designation{font-family:var(--mono);font-size:11px;color:var(--acc);white-space:nowrap;flex-shrink:0;width:150px;overflow:hidden;text-overflow:ellipsis}
@@ -186,7 +186,8 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .gen-card-format-field{width:60px;cursor:pointer}
 .gen-card-format-other{width:60px;display:none}
 .gen-card-format-other.on{display:block}
-.gen-card-box-change{background:var(--grn-bg);border-color:var(--grn-brd)}
+.gen-card-box-change{background:var(--grn-bg);border-color:var(--grn-brd);width:108px}
+.gen-card-box-format,.gen-card-box-sheets{width:125px}
 .gen-card-changenum-value{width:32px;font-family:var(--mono);font-size:11px;font-weight:400;color:var(--tx);white-space:nowrap;text-align:right}
 .gen-card-remove{border:none;background:transparent;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:0 2px;flex-shrink:0}
 
@@ -328,7 +329,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.45.0</footer>
+<footer class="ver-footer">v0.46.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -1428,7 +1429,7 @@ function renderTree() {
   colsBtn.type = 'button';
   colsBtn.className = 'tm-cols-btn';
   colsBtn.title = 'Показать/скрыть столбцы';
-  colsBtn.innerHTML = columnsSvg();
+  colsBtn.innerHTML = filterSvg();
   colsBtn.addEventListener('click', function (e) { e.stopPropagation(); openColPanel(); });
   thNameRow.appendChild(thNameText);
   thNameRow.appendChild(colsBtn);
@@ -1859,7 +1860,8 @@ function renderGenList() {
       tailSelect.addEventListener('change', function () {
         if (tailSelect.value === CUSTOM_TAIL_VALUE) {
           tailCustomInput.style.display = '';
-          tailCustomInput.value = (item.tailOverride != null) ? item.tailOverride : '';
+          tailCustomInput.value = (item.tailOverride != null && item.tailOverride !== '') ? item.tailOverride : currentTail;
+          item.tailOverride = tailCustomInput.value;
           tailCustomInput.focus();
         } else {
           tailCustomInput.style.display = 'none';
@@ -1899,7 +1901,7 @@ function renderGenList() {
     card.appendChild(nameWrap);
 
     var formatBox = document.createElement('div');
-    formatBox.className = 'gen-card-box';
+    formatBox.className = 'gen-card-box gen-card-box-format';
     var formatLabel = document.createElement('span');
     formatLabel.className = 'gen-card-box-label'; formatLabel.textContent = 'Формат';
     formatLabel.title = 'Выбрать формат из списка';
@@ -1940,7 +1942,7 @@ function renderGenList() {
     card.appendChild(formatBox);
 
     var sheetsBox = document.createElement('div');
-    sheetsBox.className = 'gen-card-box';
+    sheetsBox.className = 'gen-card-box gen-card-box-sheets';
     var sheetsLabel = document.createElement('span');
     sheetsLabel.className = 'gen-card-box-label'; sheetsLabel.textContent = 'Листов';
     var sheetsInput = document.createElement('input');
@@ -2273,10 +2275,15 @@ function renderRegistry() {
   var table = document.createElement('table');
   table.className = 'reg-table';
   table.innerHTML =
+    '<colgroup>' +
+    '<col style="width:7%"><col style="width:7%"><col style="width:4%"><col style="width:10%"><col style="width:11%">' +
+    '<col style="width:4%"><col style="width:5%"><col style="width:18%"><col style="width:13%">' +
+    '<col style="width:16%"><col style="width:5%">' +
+    '</colgroup>' +
     '<thead><tr>' +
     '<th>Инв. номер</th><th>Дата</th><th>№ изм.</th><th>Изделие</th><th style="text-align:left">Обозначение</th>' +
-    '<th>Листов</th><th>Формат</th><th style="text-align:left">Наименование</th><th style="text-align:left">Имя файла</th>' +
-    '<th style="text-align:left">Примечание</th><th></th>' +
+    '<th>Листов</th><th>Формат</th><th>Наименование</th><th>Имя файла</th>' +
+    '<th>Примечание</th><th></th>' +
     '</tr></thead><tbody></tbody>';
   var tbody = table.querySelector('tbody');
 
@@ -2465,7 +2472,7 @@ function iconButton(cls, svg, title) {
 function pencilSvg() { return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>'; }
 function checkSvg() { return '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>'; }
 function xSvg() { return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>'; }
-function columnsSvg() { return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/></svg>'; }
+function filterSvg() { return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h18l-7 9v6l-4 2v-8z"/></svg>'; }
 function eyeSvg() { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>'; }
 function eyeOffSvg() { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a20.3 20.3 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a20.3 20.3 0 0 1-2.66 3.79M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>'; }
 function upSvg() { return '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 15 12 9 6 15"/></svg>'; }
