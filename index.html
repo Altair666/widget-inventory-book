@@ -88,8 +88,9 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .reg-chg{width:40px;white-space:nowrap}
 .reg-sheets{width:40px;white-space:nowrap}
 .reg-format{width:52px;white-space:nowrap}
-.reg-name{text-align:left;white-space:normal;max-width:200px;word-break:break-word;overflow-wrap:anywhere}
-.reg-reason{text-align:left;max-width:340px;word-break:break-word;overflow-wrap:anywhere}
+.reg-name{text-align:left;white-space:normal;max-width:170px;word-break:break-word;overflow-wrap:anywhere}
+.reg-file{text-align:left;white-space:normal;max-width:150px;word-break:break-word;overflow-wrap:anywhere;font-family:var(--mono);font-size:11px}
+.reg-reason{text-align:left;max-width:280px;word-break:break-word;overflow-wrap:anywhere}
 .reg-note-text{white-space:pre-wrap}
 .reg-note-text.clamped{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 .reg-note-toggle{margin-top:2px;padding:0;border:none;background:none;font-size:10px;color:var(--acc);cursor:pointer;text-decoration:underline}
@@ -128,6 +129,9 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .tree-matrix thead th{position:sticky;top:0;background:var(--surf);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--tx2);border-bottom:2px solid var(--brd);z-index:1}
 .tree-matrix th.tm-name,.tree-matrix td.tm-name{text-align:left;white-space:nowrap;position:sticky;left:0;background:var(--surf);z-index:2;min-width:260px}
 .tree-matrix thead th.tm-name{z-index:3}
+.tm-th-name-row{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%}
+.tm-cols-btn{display:flex;align-items:center;justify-content:center;width:17px;height:17px;flex-shrink:0;border:none;border-radius:3px;background:transparent;color:var(--tx3);cursor:pointer;padding:0;opacity:.6;transition:all .12s}
+.tm-cols-btn:hover{opacity:1;background:var(--acc-bg);color:var(--acc)}
 .tm-name-row{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%}
 .tm-name-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .tree-matrix tbody tr:hover td{background:var(--grn-bg)}
@@ -194,6 +198,30 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 #settingsPanel .ph{flex-shrink:0}
 #settingsPanel .pb{flex:1;overflow-y:auto}
 #settingsPanel .panel-footer{padding:10px 12px;border-top:1px solid var(--brd);display:flex;justify-content:flex-end;gap:8px;flex-shrink:0}
+
+/* Select columns popover (BOM matrix) */
+#colPanel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(300px,92vw);max-height:80vh;background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);box-shadow:0 8px 28px rgba(0,0,0,.18);display:none;flex-direction:column;z-index:210}
+#colPanel.on{display:flex}
+.cp-head{padding:10px 12px;border-bottom:1px solid var(--brd);flex-shrink:0}
+.cp-title{font-size:12px;font-weight:600;color:var(--tx);margin:0 0 6px}
+.cp-search{width:100%;height:28px;border:1px solid var(--brd);border-radius:var(--r);padding:0 9px;font-family:inherit;font-size:12px;outline:none;background:#fff;color:var(--tx)}
+.cp-search:focus{border-color:var(--acc)}
+.cp-list{flex:1;overflow-y:auto;padding:4px 0;min-height:80px}
+.cp-item{display:flex;align-items:center;gap:8px;padding:5px 10px}
+.cp-item:hover{background:var(--surf2)}
+.cp-eye{flex-shrink:0;display:flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border:none;border-radius:4pt;background:transparent;color:var(--acc);cursor:pointer}
+.cp-item.cp-hidden .cp-eye{color:var(--tx3)}
+.cp-item.cp-hidden .cp-label{color:var(--tx3)}
+.cp-label{flex:1;font-size:12px;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cp-reorder{display:flex;gap:2px;flex-shrink:0}
+.cp-reorder button{width:20px;height:20px;padding:0;border:1px solid var(--brd);border-radius:3px;background:var(--surf);color:var(--tx3);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.cp-reorder button:hover:not(:disabled){border-color:var(--acc);color:var(--acc)}
+.cp-reorder button:disabled{opacity:.3;cursor:default}
+.cp-empty{padding:14px;text-align:center;color:var(--tx3);font-size:12px}
+.cp-foot{padding:8px 12px;border-top:1px solid var(--brd);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;gap:8px}
+.cp-reset{border:none;background:none;padding:0;font-size:11px;color:var(--acc);cursor:pointer;text-decoration:underline;flex-shrink:0}
+.cp-actions{display:flex;gap:8px}
+.cp-actions .btn-secondary,.cp-actions .btn-primary{padding:6px 12px}
 #sDocTypeNames{min-height:220px;font-family:var(--mono)}
 
 ::-webkit-scrollbar{width:4px;height:4px}
@@ -300,7 +328,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.44.0</footer>
+<footer class="ver-footer">v0.45.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -333,6 +361,21 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="panel-footer">
     <button class="btn-secondary" id="settingsCancel">Отмена</button>
     <button class="btn-primary" id="settingsSave">Сохранить</button>
+  </div>
+</div>
+
+<div id="colPanel">
+  <div class="cp-head">
+    <p class="cp-title">Столбцы матрицы состава</p>
+    <input class="cp-search" id="cpSearch" placeholder="Поиск столбца…" autocomplete="off">
+  </div>
+  <div class="cp-list" id="cpList"></div>
+  <div class="cp-foot">
+    <button class="cp-reset" id="cpReset">Сбросить</button>
+    <div class="cp-actions">
+      <button class="btn-secondary" id="cpCancel">Отмена</button>
+      <button class="btn-primary" id="cpOk">OK</button>
+    </div>
   </div>
 </div>
 
@@ -460,8 +503,72 @@ var state = {
   genNameEditIdx: null,   // индекс карточки в generatedList, для которой сейчас открыто редактирование наименования
 
   execCounter: 0,         // счётчик для уникальных id вручную добавленных исполнений (exec:<originId>:<n>)
-  pendingExecRowId: null  // id строки, для которой сейчас открыта строка-черновик ввода исполнения
+  pendingExecRowId: null, // id строки, для которой сейчас открыта строка-черновик ввода исполнения
+
+  colOrder: [],           // порядок меток DOC_TYPES для столбцов матрицы состава (личная настройка браузера)
+  colHidden: {},          // label -> true — столбец скрыт вручную, даже если в нём есть отметки
+  colShown: {}            // label -> true — столбец показан вручную, даже если в нём нет отметок (переопределяет автоскрытие пустых)
 };
+
+// Настройка состава/порядка столбцов матрицы — личное предпочтение интерфейса
+// конкретного браузера, а не данные документа, поэтому хранится в localStorage,
+// а не через grist.setOption (в отличие от docTypeNames и т.п.).
+var COL_PREFS_KEY = 'invBook.colPrefs.v1';
+function loadColPrefs() {
+  try {
+    var raw = localStorage.getItem(COL_PREFS_KEY);
+    if (!raw) return;
+    var parsed = JSON.parse(raw);
+    state.colOrder = Array.isArray(parsed.order) ? parsed.order : [];
+    state.colHidden = parsed.hidden && typeof parsed.hidden === 'object' ? parsed.hidden : {};
+    state.colShown = parsed.shown && typeof parsed.shown === 'object' ? parsed.shown : {};
+  } catch (e) { /* localStorage недоступен или битые данные — остаёмся с настройками по умолчанию */ }
+}
+function saveColPrefs() {
+  try {
+    localStorage.setItem(COL_PREFS_KEY, JSON.stringify({ order: state.colOrder, hidden: state.colHidden, shown: state.colShown }));
+  } catch (e) { /* некуда сохранять — настройка просто не переживёт перезагрузку */ }
+}
+loadColPrefs();
+
+// DOC_TYPES в пользовательском порядке (state.colOrder); типы документов, которых
+// ещё нет в сохранённом порядке (новые, либо порядок вообще не задавался),
+// дописываются в конец в исходном порядке DOC_TYPES.
+function orderedDocTypes() {
+  if (!state.colOrder.length) return DOC_TYPES.slice();
+  var byLabel = {};
+  DOC_TYPES.forEach(function (d) { byLabel[d.label] = d; });
+  var out = [];
+  state.colOrder.forEach(function (label) {
+    if (byLabel[label]) { out.push(byLabel[label]); delete byLabel[label]; }
+  });
+  DOC_TYPES.forEach(function (d) { if (byLabel[d.label]) out.push(d); });
+  return out;
+}
+
+// Столбец видим, если он не скрыт вручную, и либо показан вручную, либо в нём
+// есть хотя бы одна отметка (checkedByLabel) — пустые столбцы, для которых
+// пользователь ничего не решал, скрываются автоматически.
+function isColVisible(label, checkedByLabel) {
+  if (state.colHidden[label]) return false;
+  if (state.colShown[label]) return true;
+  return !!checkedByLabel[label];
+}
+
+function checkedByLabelForTree() {
+  var checkedByLabel = {};
+  state.treeRows.forEach(function (row) {
+    var rc = state.cellChecked[row.id];
+    if (!rc) return;
+    Object.keys(rc).forEach(function (label) { if (rc[label]) checkedByLabel[label] = true; });
+  });
+  return checkedByLabel;
+}
+
+function visibleOrderedDocTypes() {
+  var checkedByLabel = checkedByLabelForTree();
+  return orderedDocTypes().filter(function (dt) { return isColVisible(dt.label, checkedByLabel); });
+}
 
 function setConn(ok, label) {
   document.getElementById('connDot').className = 'conn-dot' + (ok ? ' ok' : '');
@@ -1298,22 +1405,37 @@ function renderTree() {
     return;
   }
 
+  var dtList = visibleOrderedDocTypes();
+
   var table = document.createElement('table');
   table.className = 'tree-matrix';
 
-  // columns[0] = карточка "Состав изделия", columns[i+1] = столбец DOC_TYPES[i] —
+  // columns[0] = карточка "Состав изделия", columns[i+1] = столбец dtList[i] —
   // собирается по ходу построения таблицы, чтобы навесить наведение "весь столбец"
   // на th и td одного и того же индекса без повторного обхода строк.
   var columns = [[]];
-  DOC_TYPES.forEach(function () { columns.push([]); });
+  dtList.forEach(function () { columns.push([]); });
 
   var thead = document.createElement('thead');
   var headRow = document.createElement('tr');
   var thName = document.createElement('th');
-  thName.className = 'tm-name'; thName.textContent = 'Состав изделия';
+  thName.className = 'tm-name';
+  var thNameRow = document.createElement('span');
+  thNameRow.className = 'tm-th-name-row';
+  var thNameText = document.createElement('span');
+  thNameText.textContent = 'Состав изделия';
+  var colsBtn = document.createElement('button');
+  colsBtn.type = 'button';
+  colsBtn.className = 'tm-cols-btn';
+  colsBtn.title = 'Показать/скрыть столбцы';
+  colsBtn.innerHTML = columnsSvg();
+  colsBtn.addEventListener('click', function (e) { e.stopPropagation(); openColPanel(); });
+  thNameRow.appendChild(thNameText);
+  thNameRow.appendChild(colsBtn);
+  thName.appendChild(thNameRow);
   headRow.appendChild(thName);
   columns[0].push(thName);
-  DOC_TYPES.forEach(function (dt, i) {
+  dtList.forEach(function (dt, i) {
     var th = document.createElement('th');
     th.className = 'tm-cb';
     th.textContent = dt.headerText || dt.label;
@@ -1370,7 +1492,7 @@ function renderTree() {
     tr.appendChild(tdName);
     columns[0].push(tdName);
 
-    DOC_TYPES.forEach(function (dt, i) {
+    dtList.forEach(function (dt, i) {
       var td = document.createElement('td');
       td.className = 'tm-cb';
       var cell = document.createElement('span');
@@ -1414,7 +1536,7 @@ function renderTree() {
       var draftTr = document.createElement('tr');
       draftTr.className = 'tm-exec-draft';
       var draftTd = document.createElement('td');
-      draftTd.colSpan = DOC_TYPES.length + 1;
+      draftTd.colSpan = dtList.length + 1;
       var draftRowWrap = document.createElement('div');
       draftRowWrap.className = 'tm-exec-draft-row';
       draftRowWrap.style.paddingLeft = (6 + (row.depth + 1) * 16) + 'px';
@@ -2165,7 +2287,7 @@ function renderRegistry() {
     } else {
       tr.innerHTML =
         '<td class="reg-dn"></td><td class="reg-date"></td><td class="reg-chg"></td><td></td><td class="reg-mono" style="text-align:left"></td>' +
-        '<td class="reg-sheets"></td><td class="reg-format"></td><td class="reg-name"></td><td class="reg-mono" style="text-align:left"></td>' +
+        '<td class="reg-sheets"></td><td class="reg-format"></td><td class="reg-name"></td><td class="reg-file"></td>' +
         '<td class="reg-reason"></td><td class="reg-actions"></td>';
       var c = tr.children;
       c[0].textContent = r.InventoryNumber || '';
@@ -2343,6 +2465,11 @@ function iconButton(cls, svg, title) {
 function pencilSvg() { return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>'; }
 function checkSvg() { return '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>'; }
 function xSvg() { return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>'; }
+function columnsSvg() { return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/></svg>'; }
+function eyeSvg() { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>'; }
+function eyeOffSvg() { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a20.3 20.3 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a20.3 20.3 0 0 1-2.66 3.79M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>'; }
+function upSvg() { return '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 15 12 9 6 15"/></svg>'; }
+function downSvg() { return '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>'; }
 
 // ---------- Settings ----------
 
@@ -2356,7 +2483,10 @@ var sDocTypeNames = document.getElementById('sDocTypeNames');
 document.getElementById('btnSettings').addEventListener('click', openSettings);
 document.getElementById('settingsClose').addEventListener('click', closeSettings);
 document.getElementById('settingsCancel').addEventListener('click', closeSettings);
-overlay.addEventListener('click', closeSettings);
+overlay.addEventListener('click', function () {
+  closeSettings();
+  closeColPanel();
+});
 
 function openSettings() {
   sComponentsTable.value = state.options.componentsTableId || '';
@@ -2385,6 +2515,105 @@ document.getElementById('settingsSave').addEventListener('click', function () {
   loadComponents();
   updateComputedFields();
   closeSettings();
+});
+
+var colPanel = document.getElementById('colPanel');
+var cpSearch = document.getElementById('cpSearch');
+var cpList = document.getElementById('cpList');
+var cpDraft = null;         // {order:[label,...], hidden:{label:true}, shown:{label:true}} — черновик, применяется только по OK
+var cpCheckedByLabel = {};  // снимок "в каких столбцах вообще есть отметки" на момент открытия панели
+
+function openColPanel() {
+  cpCheckedByLabel = checkedByLabelForTree();
+  cpDraft = {
+    order: orderedDocTypes().map(function (d) { return d.label; }),
+    hidden: Object.assign({}, state.colHidden),
+    shown: Object.assign({}, state.colShown)
+  };
+  cpSearch.value = '';
+  renderColPanelList();
+  overlay.classList.add('on');
+  colPanel.classList.add('on');
+}
+function closeColPanel() {
+  overlay.classList.remove('on');
+  colPanel.classList.remove('on');
+}
+
+function moveColDraft(label, delta) {
+  var arr = cpDraft.order;
+  var i = arr.indexOf(label);
+  var j = i + delta;
+  if (i === -1 || j < 0 || j >= arr.length) return;
+  var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+  renderColPanelList();
+}
+
+function renderColPanelList() {
+  var q = cpSearch.value.trim().toLowerCase();
+  var byLabel = {};
+  DOC_TYPES.forEach(function (d) { byLabel[d.label] = d; });
+  var labels = cpDraft.order;
+  cpList.innerHTML = '';
+  var shownCount = 0;
+  labels.forEach(function (label, idx) {
+    var dt = byLabel[label];
+    if (!dt) return;
+    var full = fullNameForDocType(label);
+    var hay = (label + ' ' + (dt.headerText || '') + ' ' + full).toLowerCase();
+    if (q && hay.indexOf(q) === -1) return;
+    shownCount++;
+
+    var visible = cpDraft.hidden[label] ? false : (cpDraft.shown[label] ? true : !!cpCheckedByLabel[label]);
+    var item = document.createElement('div');
+    item.className = 'cp-item' + (visible ? '' : ' cp-hidden');
+
+    var eyeBtn = document.createElement('button');
+    eyeBtn.type = 'button';
+    eyeBtn.className = 'cp-eye';
+    eyeBtn.title = visible ? 'Скрыть столбец' : 'Показать столбец';
+    eyeBtn.innerHTML = visible ? eyeSvg() : eyeOffSvg();
+    eyeBtn.addEventListener('click', function () {
+      if (visible) { cpDraft.hidden[label] = true; delete cpDraft.shown[label]; }
+      else { cpDraft.shown[label] = true; delete cpDraft.hidden[label]; }
+      renderColPanelList();
+    });
+
+    var lbl = document.createElement('span');
+    lbl.className = 'cp-label';
+    lbl.textContent = label + (full ? ' — ' + full : '');
+
+    var reorder = document.createElement('span');
+    reorder.className = 'cp-reorder';
+    var upBtn = document.createElement('button');
+    upBtn.type = 'button'; upBtn.innerHTML = upSvg(); upBtn.title = 'Выше'; upBtn.disabled = (idx === 0);
+    upBtn.addEventListener('click', function () { moveColDraft(label, -1); });
+    var downBtn = document.createElement('button');
+    downBtn.type = 'button'; downBtn.innerHTML = downSvg(); downBtn.title = 'Ниже'; downBtn.disabled = (idx === labels.length - 1);
+    downBtn.addEventListener('click', function () { moveColDraft(label, 1); });
+    reorder.appendChild(upBtn); reorder.appendChild(downBtn);
+
+    item.appendChild(eyeBtn); item.appendChild(lbl); item.appendChild(reorder);
+    cpList.appendChild(item);
+  });
+  if (!shownCount) cpList.innerHTML = '<div class="cp-empty">Ничего не найдено</div>';
+}
+
+cpSearch.addEventListener('input', renderColPanelList);
+document.getElementById('cpCancel').addEventListener('click', closeColPanel);
+document.getElementById('cpReset').addEventListener('click', function () {
+  cpDraft.order = DOC_TYPES.map(function (d) { return d.label; });
+  cpDraft.hidden = {};
+  cpDraft.shown = {};
+  renderColPanelList();
+});
+document.getElementById('cpOk').addEventListener('click', function () {
+  state.colOrder = cpDraft.order.slice();
+  state.colHidden = Object.assign({}, cpDraft.hidden);
+  state.colShown = Object.assign({}, cpDraft.shown);
+  saveColPrefs();
+  closeColPanel();
+  renderTree();
 });
 
 </script>
