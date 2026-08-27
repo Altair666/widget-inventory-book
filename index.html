@@ -193,7 +193,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .gen-card:hover{background:var(--grn-bg)}
 .gen-card-content{display:flex;align-items:center;flex-wrap:nowrap;gap:4px;flex:1 1 auto;min-width:0}
 .gen-card-designation{font-family:var(--mono);font-size:12px;color:var(--acc);white-space:nowrap;flex-shrink:0;width:150px;overflow:hidden;text-overflow:ellipsis}
-.gen-card-name{flex:1 1 auto;min-width:0;font-size:12px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3}
+.gen-card-name{flex:0 1 auto;min-width:0;font-size:12px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3}
 .gen-card-name-wrap{flex:1 1 120px;min-width:120px;display:flex;align-items:center;gap:3px}
 .gen-card-name-wrap .cell-edit-btn{flex-shrink:0}
 .gen-tail-edit-btn{margin-left:auto}
@@ -425,7 +425,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.57.0</footer>
+<footer class="ver-footer">v0.58.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -2255,22 +2255,34 @@ function renderGenList() {
 // .gc-shrink/.gc-wrap вместо расчётных @container-порогов — см.
 // комментарий у .gen-card-content.gc-shrink в <style> (история багов
 // v0.53.0/v0.55.0/v0.56.0 с расчётными порогами).
+// Чтения/записи разнесены по отдельным проходам (не чередуются по карточкам),
+// иначе каждая карточка вызывает свой forced reflow — при перетаскивании
+// разделителя панелей (.btn-split-drag) это ощущалось как тормоза (v0.57.0).
 function updateGenCardDegradation() {
-  document.querySelectorAll('.gen-card-content').forEach(function (content) {
-    content.classList.remove('gc-shrink', 'gc-wrap');
-    if (content.scrollWidth > content.clientWidth + 1) {
-      content.classList.add('gc-shrink');
-      if (content.scrollWidth > content.clientWidth + 1) {
-        content.classList.add('gc-wrap');
-      }
-    }
+  var all = document.querySelectorAll('.gen-card-content');
+  all.forEach(function (content) { content.classList.remove('gc-shrink', 'gc-wrap'); });
+  var needShrink = [];
+  all.forEach(function (content) {
+    if (content.scrollWidth > content.clientWidth + 1) needShrink.push(content);
   });
+  needShrink.forEach(function (content) { content.classList.add('gc-shrink'); });
+  var needWrap = needShrink.filter(function (content) {
+    return content.scrollWidth > content.clientWidth + 1;
+  });
+  needWrap.forEach(function (content) { content.classList.add('gc-wrap'); });
 }
 
 (function initGenCardDegradationObserver() {
   var col = document.querySelector('.gen-col');
   if (!col || typeof ResizeObserver === 'undefined') return;
-  var ro = new ResizeObserver(function () { updateGenCardDegradation(); });
+  var rafId = null;
+  var ro = new ResizeObserver(function () {
+    if (rafId !== null) return;
+    rafId = requestAnimationFrame(function () {
+      rafId = null;
+      updateGenCardDegradation();
+    });
+  });
   ro.observe(col);
 })();
 
