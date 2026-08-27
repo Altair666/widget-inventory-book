@@ -165,7 +165,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 
 .gen-transfer{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;align-self:stretch;margin-left:auto}
 .gen-transfer .icon-btn{flex-shrink:0}
-.btn-transfer{width:30px;flex:1;min-height:60px;border:none;border-radius:var(--r);background:#16b378;color:#fff;font-size:15px;font-weight:600;letter-spacing:.05em;cursor:pointer;transition:opacity .15s,transform .1s}
+.btn-transfer{width:30px;flex:1;min-height:44px;border:none;border-radius:var(--r);background:#16b378;color:#fff;font-size:15px;font-weight:600;letter-spacing:.05em;cursor:pointer;transition:opacity .15s,transform .1s}
 .btn-transfer:hover{opacity:.88}
 .btn-transfer:active{transform:scale(.98)}
 .btn-transfer:disabled{background:#9BB8AC;color:#F0F5F2;cursor:default;transform:none}
@@ -174,9 +174,9 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .btn-collapse-gen:hover{background:var(--acc-bg);color:var(--acc)}
 .btn-collapse-gen:disabled{opacity:.4;cursor:default}
 .btn-collapse-gen:disabled:hover{background:var(--surf3);color:var(--tx2)}
-.btn-split-drag{width:30px;height:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:none;border-radius:var(--r);background:var(--surf3);color:var(--tx3);cursor:col-resize;transition:all .12s}
+.btn-split-drag{width:30px;height:30px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:none;border-radius:var(--r);background:var(--surf3);color:var(--tx3);cursor:col-resize;transition:all .12s}
 .btn-split-drag:hover{background:var(--brd2);color:var(--tx2)}
-.btn-split-drag.split-on{background:var(--grn-bg);color:var(--grn)}
+.btn-split-drag.split-on{background:#16b378;color:#fff}
 .btn-split-drag.dragging{background:var(--org-bg);color:var(--org)}
 
 .gen-col{border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);display:flex;flex-direction:column;max-height:360px;overflow:hidden;transition:flex-basis .18s ease,flex-grow .18s ease,max-width .18s ease,min-width .18s ease,margin-left .18s ease,opacity .16s ease,border-color .18s ease}
@@ -191,8 +191,8 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .gen-card-name-wrap .cell-edit-btn{flex-shrink:0}
 .gen-card-name-input{height:26px;font-size:11px}
 .gen-card-name-wrap .gen-card-name-input{flex:1 1 60px;min-width:60px;width:auto}
-.gen-card-name-base{flex:0 1 auto;min-width:0;max-width:45%;font-size:11px;color:var(--tx-muted,#888);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gen-tail-select{flex:1 1 90px;min-width:70px;height:22px;font-size:11px;font-family:inherit;color:var(--tx);background:var(--surf);border:1px solid var(--brd);border-radius:3px;padding:0 3px;cursor:pointer}
+.gen-card-name-base{flex:0 1 auto;min-width:0;max-width:45%;font-size:11px;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gen-tail-select{flex:0 0 auto;width:auto;max-width:240px;height:22px;font-size:11px;font-family:inherit;color:var(--tx);background:var(--surf);border:1px solid var(--brd);border-radius:3px;padding:0 4px;cursor:pointer}
 .gen-tail-select:hover{border-color:var(--acc)}
 .gen-tail-custom-input{flex:1 1 90px;min-width:70px;height:22px;font-size:11px}
 .gen-card-box{display:flex;align-items:center;justify-content:center;gap:5px;height:28px;width:132px;padding:0 8px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf);flex-shrink:0}
@@ -208,20 +208,24 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .gen-card-changenum-value{width:32px;font-family:var(--mono);font-size:11px;font-weight:400;color:var(--tx);white-space:nowrap;text-align:right}
 .gen-card-remove{border:none;background:transparent;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:0 2px;flex-shrink:0}
 
-/* В split-режиме .gen-col у́же (см. --split-tree-w) — карточки формируемого
-   списка сжимаются, чтобы влезать в строку без переноса (высоты шрифта
-   подобраны как в .tree-matrix, см. состав изделия выше). */
+/* В split-режиме .gen-col у́же (см. --split-tree-w) — блоки изм./листов/
+   формат сжимаются по ширине контента (width:auto — не может обрезать
+   текст, т.к. box всегда ровно по размеру содержимого), а шрифт везде
+   приведён к размеру тела .tree-matrix (12px, см. состав изделия выше),
+   а не к мелким 10px подписям шапки. Децимальный номер — тоже width:auto,
+   чтобы не обрезаться. */
 .tree-layout.split-mode .gen-card{gap:4px;padding:4px 6px 4px 10px}
-.tree-layout.split-mode .gen-card-designation{width:84px;font-size:10px}
-.tree-layout.split-mode .gen-card-name{font-size:10px}
+.tree-layout.split-mode .gen-card-designation{width:auto;max-width:none;font-size:12px}
+.tree-layout.split-mode .gen-card-name{font-size:12px}
 .tree-layout.split-mode .gen-card-name-wrap{flex-basis:100px;min-width:100px;gap:3px}
-.tree-layout.split-mode .gen-card-name-base{font-size:10px}
-.tree-layout.split-mode .gen-tail-select,.tree-layout.split-mode .gen-tail-custom-input{flex-basis:56px;min-width:48px;height:20px;font-size:10px}
-.tree-layout.split-mode .gen-card-box{height:24px;width:82px;padding:0 5px;gap:3px}
-.tree-layout.split-mode .gen-card-box-format,.tree-layout.split-mode .gen-card-box-sheets{width:82px}
-.tree-layout.split-mode .gen-card-box-change{width:72px}
-.tree-layout.split-mode .gen-card-box-label,.tree-layout.split-mode .gen-card-box select,.tree-layout.split-mode .gen-card-box input,.tree-layout.split-mode .gen-card-changenum-value{font-size:10px}
-.tree-layout.split-mode .gen-card-name-input{height:22px;font-size:10px}
+.tree-layout.split-mode .gen-card-name-base{font-size:12px}
+.tree-layout.split-mode .gen-tail-select{font-size:12px;height:22px;max-width:160px}
+.tree-layout.split-mode .gen-tail-custom-input{flex-basis:56px;min-width:48px;height:22px;font-size:12px}
+.tree-layout.split-mode .gen-card-box{height:26px;width:auto;padding:0 5px;gap:3px}
+.tree-layout.split-mode .gen-card-format-field,.tree-layout.split-mode .gen-card-format-other{width:46px}
+.tree-layout.split-mode .gen-card-sheets-input{width:30px}
+.tree-layout.split-mode .gen-card-box-label,.tree-layout.split-mode .gen-card-box select,.tree-layout.split-mode .gen-card-box input,.tree-layout.split-mode .gen-card-changenum-value{font-size:12px}
+.tree-layout.split-mode .gen-card-name-input{height:24px;font-size:12px}
 
 /* Settings slide-over */
 #overlay{position:fixed;inset:0;background:rgba(0,0,0,.15);display:none;z-index:190}
@@ -366,7 +370,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.50.0</footer>
+<footer class="ver-footer">v0.51.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -2025,10 +2029,14 @@ function renderGenList() {
       // казалось, что «появляется новое окно». Базовый текст (basePrefix)
       // играет роль постоянно видимого «ярлыка», как formatLabel — клик по
       // нему в режиме своего варианта возвращает к выбору из каталога.
+      var tailCustomSaveBtn = iconButton('cell-edit-btn save', checkSvg(), 'Применить свой вариант');
+      var tailCustomCancelBtn = iconButton('cell-edit-btn cancel', xSvg(), 'Отмена');
       function syncTailMode() {
         var isCustom = tailSelect.value === CUSTOM_TAIL_VALUE;
         tailSelect.style.display = isCustom ? 'none' : '';
         tailCustomInput.style.display = isCustom ? '' : 'none';
+        tailCustomSaveBtn.style.display = isCustom ? '' : 'none';
+        tailCustomCancelBtn.style.display = isCustom ? '' : 'none';
         basePrefix.style.cursor = isCustom ? 'pointer' : 'default';
       }
       syncTailMode();
@@ -2042,26 +2050,37 @@ function renderGenList() {
 
       tailSelect.addEventListener('change', function () {
         if (tailSelect.value === CUSTOM_TAIL_VALUE) {
+          // Значение не пишем в item.tailOverride сразу — это лишь черновик
+          // в поле ввода, применяется только явным нажатием ✓ (см. ниже).
           tailCustomInput.value = (item.tailOverride != null && item.tailOverride !== '') ? item.tailOverride : currentTail;
-          item.tailOverride = tailCustomInput.value;
           syncTailMode();
           tailCustomInput.focus();
+          tailCustomInput.select();
         } else {
           item.tailOverride = tailSelect.value;
           syncTailMode();
         }
       });
-      tailCustomInput.addEventListener('input', function () {
-        // Пишем прямо в item.tailOverride без перерисовки списка на каждое
-        // нажатие клавиши — renderGenList() пересобрал бы DOM и сбросил фокус.
+      // Свободный ввод — черновик до явного подтверждения: печатаем в поле,
+      // но item.tailOverride меняем только по клику ✓ (или Enter), а ✕
+      // (или Esc) отменяет ввод и возвращает список к последнему
+      // сохранённому состоянию через полную перерисовку.
+      tailCustomSaveBtn.addEventListener('click', function () {
         item.tailOverride = tailCustomInput.value;
+        renderGenList();
+      });
+      tailCustomCancelBtn.addEventListener('click', function () {
+        renderGenList();
       });
       tailCustomInput.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') tailCustomInput.blur();
+        if (e.key === 'Enter') tailCustomSaveBtn.click();
+        if (e.key === 'Escape') tailCustomCancelBtn.click();
       });
 
       nameWrap.appendChild(tailSelect);
       nameWrap.appendChild(tailCustomInput);
+      nameWrap.appendChild(tailCustomSaveBtn);
+      nameWrap.appendChild(tailCustomCancelBtn);
 
       var nameEditBtn = iconButton('cell-edit-btn', pencilSvg(), 'Изменить наименование полностью');
       nameEditBtn.addEventListener('click', function () {
@@ -2338,7 +2357,7 @@ function renderRegYearBar() {
   allChip.textContent = 'Все';
   allChip.addEventListener('click', function () { setRegYearFilter(null); });
   bar.appendChild(allChip);
-  for (var y = minYear; y <= nowYear; y++) {
+  for (var y = nowYear; y >= minYear; y--) {
     (function (year) {
       var chip = document.createElement('span');
       chip.className = 'reg-year-chip' + (state.regYearFilter === year ? ' active' : '');
