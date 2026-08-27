@@ -82,7 +82,14 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .btn-primary:hover{opacity:.9}
 .btn-primary:disabled{opacity:.35;cursor:not-allowed}
 
-#regBody{overflow-x:auto}
+.reg-body-wrap{position:relative}
+#regBody{overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
+#regBody::-webkit-scrollbar{display:none}
+.reg-scroll-btn{position:absolute;top:50%;transform:translateY(-50%);z-index:5;width:28px;height:28px;border-radius:50%;border:1px solid var(--brd);background:var(--surf);color:var(--acc);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.16);transition:opacity .15s ease,visibility .15s ease}
+.reg-scroll-btn:hover{background:var(--acc-bg);border-color:var(--acc)}
+.reg-scroll-btn.reg-scroll-left{left:4px}
+.reg-scroll-btn.reg-scroll-right{right:4px}
+.reg-scroll-btn.hidden{opacity:0;visibility:hidden;pointer-events:none}
 .reg-table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
 .reg-table th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);padding:5px 8px;border-bottom:2px solid var(--brd);text-align:center;background:var(--surf2);white-space:nowrap}
 .reg-table td{padding:6px 8px;border-bottom:1px solid var(--brd);vertical-align:top;text-align:center}
@@ -393,7 +400,15 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
         <input class="reg-filter-input" id="regFilterInput" placeholder="Фильтр по инв. номеру, изделию, обозначению…" oninput="renderRegistry()">
       </div>
     </div>
-    <div id="regBody"></div>
+    <div class="reg-body-wrap">
+      <button class="reg-scroll-btn reg-scroll-left" id="regScrollLeft" title="Прокрутить влево" type="button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <div id="regBody"></div>
+      <button class="reg-scroll-btn reg-scroll-right" id="regScrollRight" title="Прокрутить вправо" type="button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+    </div>
   </div>
 
 </main>
@@ -403,7 +418,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.53.0</footer>
+<footer class="ver-footer">v0.54.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -2432,6 +2447,32 @@ function setRegYearFilter(year) {
   }, { passive: false });
 })();
 
+function updateRegScrollBtns() {
+  var body = document.getElementById('regBody');
+  var left = document.getElementById('regScrollLeft');
+  var right = document.getElementById('regScrollRight');
+  if (!body || !left || !right) return;
+  var canScroll = body.scrollWidth - body.clientWidth > 1;
+  left.classList.toggle('hidden', !canScroll || body.scrollLeft <= 0);
+  right.classList.toggle('hidden', !canScroll || body.scrollLeft >= body.scrollWidth - body.clientWidth - 1);
+}
+
+(function initRegBodyScroller() {
+  var body = document.getElementById('regBody');
+  var left = document.getElementById('regScrollLeft');
+  var right = document.getElementById('regScrollRight');
+  if (!body || !left || !right) return;
+  body.addEventListener('wheel', function (e) {
+    if (!e.deltaY) return;
+    e.preventDefault();
+    body.scrollLeft += e.deltaY;
+  }, { passive: false });
+  body.addEventListener('scroll', updateRegScrollBtns);
+  window.addEventListener('resize', updateRegScrollBtns);
+  left.addEventListener('click', function () { body.scrollBy({ left: -240, behavior: 'smooth' }); });
+  right.addEventListener('click', function () { body.scrollBy({ left: 240, behavior: 'smooth' }); });
+})();
+
 // ---------- Numbering ----------
 
 // Инвентарный номер: YY-NNNNN, сквозной по году, не привязан к изделию.
@@ -2575,6 +2616,7 @@ function renderRegistry() {
 
   if (!rows.length) {
     regBody.innerHTML = '<div class="reg-empty">' + (state.records.length ? 'Ничего не найдено' : 'Документов пока нет — заполните форму выше') + '</div>';
+    updateRegScrollBtns();
     return;
   }
 
@@ -2626,6 +2668,7 @@ function renderRegistry() {
 
   regBody.innerHTML = '';
   regBody.appendChild(table);
+  updateRegScrollBtns();
 }
 
 function editableRow(r) {
