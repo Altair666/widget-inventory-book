@@ -342,7 +342,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.47.0</footer>
+<footer class="ver-footer">v0.48.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -617,7 +617,7 @@ function updateConnLabel() {
     return;
   }
   var total = Object.keys(state.componentsById).length;
-  setConn(true, 'Подключено к Grist — ' + total + ' ' + pluralizeRu(total, 'компонент', 'компонента', 'компонентов'));
+  setConn(true, total + ' ' + pluralizeRu(total, 'компонент', 'компонента', 'компонентов'));
 }
 
 function docTypeNameOverrides() {
