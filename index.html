@@ -182,7 +182,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .gen-col{border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);display:flex;flex-direction:column;max-height:360px;overflow:hidden;transition:flex-basis .18s ease,flex-grow .18s ease,max-width .18s ease,min-width .18s ease,margin-left .18s ease,opacity .16s ease,border-color .18s ease}
 .gen-list{overflow-y:auto;flex:1}
 .gen-empty{padding:14px;text-align:center;color:var(--tx3);font-size:11px}
-.gen-card{display:flex;align-items:center;flex-wrap:wrap;gap:4px;padding:4px 6px 4px 10px;border-bottom:1px solid var(--brd)}
+.gen-card{position:relative;display:flex;align-items:center;flex-wrap:wrap;gap:4px;padding:4px 28px 4px 10px;border-bottom:1px solid var(--brd)}
 .gen-card:last-child{border-bottom:none}
 .gen-card:hover{background:var(--grn-bg)}
 .gen-card-designation{font-family:var(--mono);font-size:12px;color:var(--acc);white-space:nowrap;flex-shrink:0;width:150px;overflow:hidden;text-overflow:ellipsis}
@@ -196,7 +196,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .gen-tail-select{flex:0 0 auto;width:auto;max-width:200px;height:22px;font-size:12px;font-family:inherit;color:var(--tx);background:var(--surf);border:1px solid var(--brd);border-radius:3px;padding:0 4px;cursor:pointer}
 .gen-tail-select:hover{border-color:var(--acc)}
 .gen-tail-custom-input{flex:1 1 70px;min-width:56px;height:22px;font-size:12px}
-.gen-card-controls{display:flex;align-items:center;gap:5px;flex-shrink:0;flex-wrap:nowrap}
+.gen-card-controls{display:flex;align-items:center;justify-content:flex-end;gap:5px;flex-shrink:0;flex-wrap:nowrap;margin-left:auto}
 .gen-card-box{display:flex;align-items:center;justify-content:center;gap:3px;height:26px;width:auto;padding:0 5px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf);flex-shrink:0}
 .gen-card-box-label{font-size:12px;font-weight:400;color:var(--tx);white-space:nowrap}
 .gcbl-short{display:none}
@@ -207,25 +207,57 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .gen-card-format-other{width:52px;display:none}
 .gen-card-format-other.on{display:block}
 .gen-card-box-change{background:var(--grn-bg);border-color:var(--grn-brd)}
-.gen-card-changenum-value{width:auto;font-family:var(--mono);font-size:12px;font-weight:400;color:var(--tx);white-space:nowrap;text-align:right}
-.gen-card-remove{border:none;background:transparent;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:0 2px;flex-shrink:0}
+.gen-card-changenum-value{width:34px;font-family:var(--mono);font-size:12px;font-weight:400;color:var(--tx);white-space:nowrap;text-align:right}
+.gen-card-remove{position:absolute;top:4px;right:6px;border:none;background:transparent;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:2px}
 
-/* Компактное отображение карточки формируемого списка — раньше было
-   отдельным .split-mode-модификатором, теперь это базовый вид ВЕЗДЕ (и в
-   развёрнутом, и в split-режиме) — по прямой просьбе "не переключалка, а
-   просто переделай". Децимальный номер сознательно НЕ width:auto (это
-   вызывало нестабильный перенос строки — "скачет"/"приклеивается к
-   обозначению") — фиксированные 150px, как было проверено ещё в v0.5.14,
-   с ellipsis+title как редкий fallback на аномально длинные обозначения.
-   .gen-card-controls группирует Формат/Листов/Изм./× в один
-   flex-wrap:nowrap блок — при нехватке места переносится на новую строку
-   только ЦЕЛИКОМ, а не по отдельным блокам. */
+/* Компактное отображение карточки формируемого списка — постоянный
+   базовый вид (не переключалка, см. историю v0.52.0). Крестик удаления
+   (.gen-card-remove) вынесен из потока (position:absolute у угла
+   .gen-card, который сам стал position:relative) — по прямой просьбе,
+   чтобы × не двигался НИ ПРИ КАКОМ переносе строк внутри карточки.
+   .gen-card-controls (Формат/Листов/Изм.) — margin-left:auto прижимает
+   его к правому краю той строки, на которой он оказался (работает и
+   когда он ещё в одной строке с наименованием, и когда перенесён на
+   отдельную строку), justify-content:flex-end довершает то же самое
+   для его собственных детей, когда сам блок принудительно растянут на
+   всю ширину (см. вторую @container-ступень ниже).
+
+   Деградация при сужении .gen-col — управляемая, в две явные ступени
+   через @container, а не полагается на случайный natural overflow-wrap
+   (порядок по прямой просьбе пользователя):
+   1) ~480px — СНАЧАЛА сжимаются подписи/шрифт/поля внутри
+      Формат/Листов/Изм. (и наименование хвоста Д-Д5 получает
+      flex-wrap, чтобы список/поле переносились внутри себя) — карточка
+      остаётся в одну строку дольше за счёт этого сжатия;
+   2) ~340px — когда сжатия уже недостаточно, .gen-card-controls
+      принудительно переносится на свою строку (flex-basis:100%) — а
+      раз строка теперь своя и просторная, шрифт/подписи в блоках
+      ВОЗВРАЩАЮТСЯ к полному размеру (сжатие было нужно только чтобы
+      оттянуть перенос, не после него). */
 .gen-col{container-type:inline-size}
-@container (max-width:380px){
+@container (max-width:480px){
   .gen-card-name{font-size:10px}
+  .gen-card-name-wrap{flex-wrap:wrap}
+  .gen-card-box{gap:2px;padding:0 4px}
+  .gen-card-box-label,.gen-card-box select,.gen-card-box input,.gen-card-changenum-value{font-size:10px}
   .gen-card-box-format:not(.fmt-other) .gen-card-box-label{display:none}
   .gen-card-box-sheets .gcbl-full{display:none}
   .gen-card-box-sheets .gcbl-short{display:inline}
+  .gen-card-sheets-input{width:24px}
+  .gen-card-format-field,.gen-card-format-other{width:40px}
+  .gen-card-changenum-value{width:26px}
+}
+@container (max-width:340px){
+  .gen-card-controls{flex-basis:100%}
+  .gen-card-name{font-size:12px}
+  .gen-card-box{gap:3px;padding:0 5px}
+  .gen-card-box-label,.gen-card-box select,.gen-card-box input,.gen-card-changenum-value{font-size:12px}
+  .gen-card-box-format.fmt-other .gen-card-box-label,.gen-card-box-format:not(.fmt-other) .gen-card-box-label{display:inline}
+  .gen-card-box-sheets .gcbl-full{display:inline}
+  .gen-card-box-sheets .gcbl-short{display:none}
+  .gen-card-sheets-input{width:34px}
+  .gen-card-format-field,.gen-card-format-other{width:52px}
+  .gen-card-changenum-value{width:34px}
 }
 
 /* Settings slide-over */
@@ -371,7 +403,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.52.0</footer>
+<footer class="ver-footer">v0.53.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -2178,15 +2210,15 @@ function renderGenList() {
     changeBox.appendChild(changeLabel); changeBox.appendChild(changeNumSpan);
     controlsWrap.appendChild(changeBox);
 
+    card.appendChild(controlsWrap);
+
     var removeBtn = document.createElement('button');
     removeBtn.className = 'gen-card-remove'; removeBtn.textContent = '×'; removeBtn.title = 'Убрать';
     removeBtn.addEventListener('click', function () {
       state.generatedList.splice(idx, 1);
       renderGenList();
     });
-    controlsWrap.appendChild(removeBtn);
-
-    card.appendChild(controlsWrap);
+    card.appendChild(removeBtn);
 
     el.appendChild(card);
   });
