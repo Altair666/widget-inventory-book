@@ -15,6 +15,7 @@
   --acc:#1E4ED8;--acc-bg:#EEF2FF;--acc-brd:#C7D2FE;
   --grn:#0D6E4E;--grn-bg:#ECFDF5;--grn-brd:#A7F3D0;
   --warn:#92400E;--warn-bg:#FFFBEB;--warn-brd:#FCD34D;
+  --org:#C2410C;--org-bg:#FFF3E8;--org-brd:#FED7AA;
   --red:#991B1B;--red-bg:#FEF2F2;--red-brd:#FECACA;
   --mono:'IBM Plex Mono',monospace;
   --sans:'IBM Plex Sans',sans-serif;
@@ -174,7 +175,9 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .btn-collapse-gen:disabled{opacity:.4;cursor:default}
 .btn-collapse-gen:disabled:hover{background:var(--surf3);color:var(--tx2)}
 .btn-split-drag{width:30px;height:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:none;border-radius:var(--r);background:var(--surf3);color:var(--tx3);cursor:col-resize;transition:all .12s}
-.btn-split-drag:hover,.btn-split-drag.dragging{background:var(--acc-bg);color:var(--acc)}
+.btn-split-drag:hover{background:var(--brd2);color:var(--tx2)}
+.btn-split-drag.split-on{background:var(--grn-bg);color:var(--grn)}
+.btn-split-drag.dragging{background:var(--org-bg);color:var(--org)}
 
 .gen-col{border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);display:flex;flex-direction:column;max-height:360px;overflow:hidden;transition:flex-basis .18s ease,flex-grow .18s ease,max-width .18s ease,min-width .18s ease,margin-left .18s ease,opacity .16s ease,border-color .18s ease}
 .gen-list{overflow-y:auto;flex:1}
@@ -204,6 +207,21 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .gen-card-box-format,.gen-card-box-sheets{width:125px}
 .gen-card-changenum-value{width:32px;font-family:var(--mono);font-size:11px;font-weight:400;color:var(--tx);white-space:nowrap;text-align:right}
 .gen-card-remove{border:none;background:transparent;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:0 2px;flex-shrink:0}
+
+/* В split-режиме .gen-col у́же (см. --split-tree-w) — карточки формируемого
+   списка сжимаются, чтобы влезать в строку без переноса (высоты шрифта
+   подобраны как в .tree-matrix, см. состав изделия выше). */
+.tree-layout.split-mode .gen-card{gap:4px;padding:4px 6px 4px 10px}
+.tree-layout.split-mode .gen-card-designation{width:84px;font-size:10px}
+.tree-layout.split-mode .gen-card-name{font-size:10px}
+.tree-layout.split-mode .gen-card-name-wrap{flex-basis:100px;min-width:100px;gap:3px}
+.tree-layout.split-mode .gen-card-name-base{font-size:10px}
+.tree-layout.split-mode .gen-tail-select,.tree-layout.split-mode .gen-tail-custom-input{flex-basis:56px;min-width:48px;height:20px;font-size:10px}
+.tree-layout.split-mode .gen-card-box{height:24px;width:82px;padding:0 5px;gap:3px}
+.tree-layout.split-mode .gen-card-box-format,.tree-layout.split-mode .gen-card-box-sheets{width:82px}
+.tree-layout.split-mode .gen-card-box-change{width:72px}
+.tree-layout.split-mode .gen-card-box-label,.tree-layout.split-mode .gen-card-box select,.tree-layout.split-mode .gen-card-box input,.tree-layout.split-mode .gen-card-changenum-value{font-size:10px}
+.tree-layout.split-mode .gen-card-name-input{height:22px;font-size:10px}
 
 /* Settings slide-over */
 #overlay{position:fixed;inset:0;background:rgba(0,0,0,.15);display:none;z-index:190}
@@ -302,7 +320,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
           <button class="btn-collapse-gen" onclick="collapseGenExpanded()" title="Вернуть состав изделия, чтобы добавить ещё документов">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           </button>
-          <button class="btn-split-drag" id="btnSplitDrag" title="Перетащите, чтобы показать состав изделия и формируемый список одновременно">
+          <button class="btn-split-drag" id="btnSplitDrag" title="Клик — показать/скрыть состав изделия и список одновременно, перетаскивание — изменить ширину">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8l4 4-4 4M6 8l-4 4 4 4M2 12h20"/></svg>
           </button>
         </div>
@@ -348,7 +366,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.49.0</footer>
+<footer class="ver-footer">v0.50.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -529,6 +547,7 @@ var state = {
   genExpanded: false,     // true = состав изделия свёрнут, формируемый список развёрнут почти на всю панель
   splitMode: false,       // true = оба блока (состав изделия + формируемый список) видны одновременно, ширину задаёт splitTreeWidth
   splitTreeWidth: null,   // px, ширина .tree-col в режиме split (личная настройка браузера, см. SPLIT_WIDTH_KEY)
+  splitModePrevGenExpanded: false, // значение genExpanded перед входом в split — куда вернуться при выключении split кликом по btnSplitDrag
   genNameEditIdx: null,   // индекс карточки в generatedList, для которой сейчас открыто редактирование наименования
 
   execCounter: 0,         // счётчик для уникальных id вручную добавленных исполнений (exec:<originId>:<n>)
@@ -1663,6 +1682,8 @@ function updateBomPanelVisibility() {
   layout.classList.toggle('gen-expanded', !standalone && !split && !!state.genExpanded);
   layout.classList.toggle('gen-collapsed', !standalone && !split && !state.genExpanded);
   layout.style.setProperty('--split-tree-w', (state.splitTreeWidth || 420) + 'px');
+  var splitBtn = document.getElementById('btnSplitDrag');
+  if (splitBtn) splitBtn.classList.toggle('split-on', split);
   updateRegisterButtonState(standalone, split);
   updateTransferButtonsState(standalone, split);
 }
@@ -1703,8 +1724,8 @@ function updateRegisterButtonState(standalone, split) {
 
 // Сворачивает формируемый список обратно, возвращает состав изделия на всю
 // ширину — чтобы можно было доотметить ещё компонентов и снова нажать «»».
-// Заодно выходит из split-режима (см. btnSplitDrag ниже) — «←» это
-// единственный явный способ вернуться к полноширинному составу изделия.
+// Заодно выходит из split-режима. Второй способ выйти из split — клик (без
+// перетаскивания) по самой кнопке btnSplitDrag, см. initSplitDrag() ниже.
 function collapseGenExpanded() {
   state.genExpanded = false;
   state.splitMode = false;
@@ -1721,6 +1742,10 @@ var SPLIT_WIDTH_KEY = 'invBook.splitTreeWidth.v1';
   } catch (e) { /* localStorage недоступен — используем дефолт */ }
 })();
 
+// Порог в пикселях, отделяющий обычный клик (переключить split-режим) от
+// перетаскивания (менять ширину) — см. onUp ниже.
+var SPLIT_DRAG_THRESHOLD = 4;
+
 (function initSplitDrag() {
   var handle = document.getElementById('btnSplitDrag');
   if (!handle) return;
@@ -1731,21 +1756,47 @@ var SPLIT_WIDTH_KEY = 'invBook.splitTreeWidth.v1';
     if (!layout || !treeCol || layout.classList.contains('standalone')) return;
     var startX = e.pageX;
     var startWidth = treeCol.getBoundingClientRect().width;
-    state.splitMode = true;
-    updateBomPanelVisibility();
-    layout.classList.add('dragging-split');
-    handle.classList.add('dragging');
+    var wasSplit = !!state.splitMode;
+    var prevGenExpanded = state.genExpanded;
+    var moved = false;
+
     function onMove(ev) {
-      var w = Math.max(220, Math.min(900, Math.round(startWidth + (ev.pageX - startX))));
+      var dx = ev.pageX - startX;
+      if (!moved) {
+        if (Math.abs(dx) < SPLIT_DRAG_THRESHOLD) return;
+        moved = true;
+        if (!state.splitMode) {
+          state.splitModePrevGenExpanded = prevGenExpanded;
+          state.splitMode = true;
+          updateBomPanelVisibility();
+        }
+        layout.classList.add('dragging-split');
+        handle.classList.add('dragging');
+      }
+      var w = Math.max(220, Math.min(900, Math.round(startWidth + dx)));
       state.splitTreeWidth = w;
       layout.style.setProperty('--split-tree-w', w + 'px');
     }
     function onUp() {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
-      layout.classList.remove('dragging-split');
-      handle.classList.remove('dragging');
-      try { localStorage.setItem(SPLIT_WIDTH_KEY, String(state.splitTreeWidth)); } catch (e) { /* нечего сохранять — переживёт только текущую сессию */ }
+      if (moved) {
+        layout.classList.remove('dragging-split');
+        handle.classList.remove('dragging');
+        try { localStorage.setItem(SPLIT_WIDTH_KEY, String(state.splitTreeWidth)); } catch (e) { /* нечего сохранять — переживёт только текущую сессию */ }
+        return;
+      }
+      // Обычный клик без перетаскивания — кнопка работает как переключатель
+      // split-режима: включает его (запомнив, какая страница была видна, см.
+      // splitModePrevGenExpanded) или возвращает обратно к ней же.
+      if (wasSplit) {
+        state.splitMode = false;
+        state.genExpanded = (state.splitModePrevGenExpanded != null) ? state.splitModePrevGenExpanded : false;
+      } else {
+        state.splitModePrevGenExpanded = prevGenExpanded;
+        state.splitMode = true;
+      }
+      updateBomPanelVisibility();
     }
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
@@ -1938,8 +1989,9 @@ function renderGenList() {
       basePrefix.title = nameForItem(item);
       nameWrap.appendChild(basePrefix);
 
+      var defaultTail = fullNameForDocType(genDtEntry.label);
       var currentTail = (item.tailOverride != null && item.tailOverride !== '')
-        ? item.tailOverride : fullNameForDocType(genDtEntry.label);
+        ? item.tailOverride : defaultTail;
       var tailVariants = DOC_TYPE_VARIANTS[genDtEntry.label] || [];
       var CUSTOM_TAIL_VALUE = '__custom__';
       var matchesVariant = tailVariants.some(function (v) {
@@ -1965,17 +2017,38 @@ function renderGenList() {
       tailCustomInput.className = 'gen-tail-custom-input form-input';
       tailCustomInput.placeholder = 'Свой текст хвоста';
       tailCustomInput.value = currentTail;
-      tailCustomInput.style.display = matchesVariant ? 'none' : '';
+
+      // Как и в «Формате» (formatSel/otherInput ниже): select и поле ввода
+      // делят одно и то же место в строке, видно только одно — иначе оба
+      // контрола вместе не помещаются в узкую карточку (особенно в
+      // split-режиме) и перескакивают на следующую строку, из-за чего
+      // казалось, что «появляется новое окно». Базовый текст (basePrefix)
+      // играет роль постоянно видимого «ярлыка», как formatLabel — клик по
+      // нему в режиме своего варианта возвращает к выбору из каталога.
+      function syncTailMode() {
+        var isCustom = tailSelect.value === CUSTOM_TAIL_VALUE;
+        tailSelect.style.display = isCustom ? 'none' : '';
+        tailCustomInput.style.display = isCustom ? '' : 'none';
+        basePrefix.style.cursor = isCustom ? 'pointer' : 'default';
+      }
+      syncTailMode();
+
+      basePrefix.addEventListener('click', function () {
+        if (tailSelect.value !== CUSTOM_TAIL_VALUE) return;
+        item.tailOverride = null;
+        tailSelect.value = matchesVariant ? currentTail : defaultTail;
+        syncTailMode();
+      });
 
       tailSelect.addEventListener('change', function () {
         if (tailSelect.value === CUSTOM_TAIL_VALUE) {
-          tailCustomInput.style.display = '';
           tailCustomInput.value = (item.tailOverride != null && item.tailOverride !== '') ? item.tailOverride : currentTail;
           item.tailOverride = tailCustomInput.value;
+          syncTailMode();
           tailCustomInput.focus();
         } else {
-          tailCustomInput.style.display = 'none';
           item.tailOverride = tailSelect.value;
+          syncTailMode();
         }
       });
       tailCustomInput.addEventListener('input', function () {
