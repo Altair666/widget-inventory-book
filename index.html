@@ -149,7 +149,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .tree-matrix{border-collapse:collapse;font-size:12px;white-space:nowrap}
 .tree-matrix th,.tree-matrix td{border-bottom:1px solid var(--brd);padding:4px 6px;text-align:center;vertical-align:middle}
 .tree-matrix thead th{position:sticky;top:0;background:var(--surf);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--tx2);border-bottom:2px solid var(--brd);z-index:1}
-.tree-matrix th.tm-name,.tree-matrix td.tm-name{text-align:left;white-space:nowrap;position:sticky;left:0;background:var(--surf);z-index:2;min-width:390px}
+.tree-matrix th.tm-name,.tree-matrix td.tm-name{text-align:left;white-space:nowrap;position:sticky;left:0;background:var(--surf);z-index:2;min-width:500px}
 .tree-matrix thead th.tm-name{z-index:3}
 .tm-th-name-row{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%}
 .tm-cols-btn{display:flex;align-items:center;justify-content:center;width:17px;height:17px;flex-shrink:0;border:none;border-radius:3px;background:transparent;color:#16b378;cursor:pointer;padding:0;opacity:1;transition:all .12s}
@@ -286,7 +286,16 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .gen-card-content.gc-shrink .gen-card-name-wrap.hybrid-tail{flex-wrap:wrap}
 .gen-card-content.gc-shrink .gen-card-box{gap:2px;padding:0 4px}
 .gen-card-content.gc-shrink .gen-card-box-label,.gen-card-content.gc-shrink .gen-card-box select,.gen-card-content.gc-shrink .gen-card-box input,.gen-card-content.gc-shrink .gen-card-changenum-value{font-size:10px}
-.gen-card-content.gc-shrink .gen-card-box-format:not(.fmt-other) .gen-card-box-label{display:none}
+/* Раньше label «Формат» скрывался в gc-shrink только у :not(.fmt-other) —
+   у "Другое" (fmt-other, напр. дефолтный формат "-" у Т5М) label оставался
+   видимым, т.к. по клику на него сбрасывает формат на дефолтный (см.
+   formatLabel.addEventListener('click', ...) в renderGenList). Из-за этого
+   карточки с форматом "-" никогда не сжимались до компактного вида — ради
+   редко используемого клика-сброса жертвовали компактностью каждой такой
+   карточки. Убрано :not(.fmt-other) — label скрывается всегда в gc-shrink,
+   клик-сброс остаётся доступен в gc-wrap (см. правило ниже, строка с
+   .fmt-other .gen-card-box-label{display:inline}) и в развёрнутом виде. */
+.gen-card-content.gc-shrink .gen-card-box-format .gen-card-box-label{display:none}
 .gen-card-content.gc-shrink .gen-card-box-sheets .gcbl-full{display:none}
 .gen-card-content.gc-shrink .gen-card-box-sheets .gcbl-short{display:inline}
 .gen-card-content.gc-shrink .gen-card-sheets-input{width:24px}
@@ -455,7 +464,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.60.0</footer>
+<footer class="ver-footer">v0.61.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
