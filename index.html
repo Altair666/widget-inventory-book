@@ -34,6 +34,11 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .panel+.panel{border-top:none}
 .ph{display:flex;align-items:center;justify-content:space-between;height:32px;padding:0 12px;border-bottom:1px solid var(--brd);background:var(--surf2)}
 .ph-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--tx2)}
+.ph.reg-ph{position:sticky;top:0;z-index:5;justify-content:flex-start}
+.reg-year-bar{display:flex;align-items:center;gap:6px;flex:1 1 auto;min-width:0;margin-left:24px;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
+.reg-year-chip{flex-shrink:0;font-family:var(--mono);font-size:10px;padding:2px 9px;border-radius:10px;background:var(--surf3);color:var(--tx2);cursor:pointer;border:1px solid transparent;white-space:nowrap;user-select:none;transition:all .12s}
+.reg-year-chip:hover{background:var(--brd2)}
+.reg-year-chip.active{background:var(--acc-bg);color:var(--acc);border-color:var(--acc-brd)}
 .pb{padding:10px 12px}
 
 .icon-btn{display:flex;align-items:center;justify-content:center;width:22px;height:22px;border:1px solid transparent;border-radius:4pt;background:transparent;color:var(--tx3);cursor:pointer;padding:0;transition:all .12s}
@@ -322,8 +327,9 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 
   <!-- REGISTRY -->
   <div class="panel">
-    <div class="ph">
+    <div class="ph reg-ph">
       <span class="ph-title">Реестр документов</span>
+      <div class="reg-year-bar" id="regYearBar"></div>
       <span class="tag tag-blue" id="regCount"></span>
     </div>
     <div class="reg-filter-bar">
@@ -342,7 +348,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.48.0</footer>
+<footer class="ver-footer">v0.49.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -530,7 +536,9 @@ var state = {
 
   colOrder: [],           // порядок меток DOC_TYPES для столбцов матрицы состава (личная настройка браузера)
   colHidden: {},          // label -> true — столбец скрыт вручную, даже если в нём есть отметки
-  colShown: {}            // label -> true — столбец показан вручную, даже если в нём нет отметок (переопределяет автоскрытие пустых)
+  colShown: {},           // label -> true — столбец показан вручную, даже если в нём нет отметок (переопределяет автоскрытие пустых)
+
+  regYearFilter: null      // число года или null («Все») — фильтр реестра по году IssueDate, см. баблы в шапке реестра
 };
 
 // Настройка состава/порядка столбцов матрицы — личное предпочтение интерфейса
@@ -695,6 +703,7 @@ grist.onRecords(function (records) {
   updateConnLabel();
   refreshChangeNumberFloorsFromServer();
   updateComputedFields();
+  renderRegYearBar();
   renderRegistry();
 });
 
@@ -2230,6 +2239,60 @@ function inputValueToDate(s) {
 }
 function pad2(n) { return (n < 10 ? '0' : '') + n; }
 
+function dateToYear(v) {
+  if (v == null || v === '') return null;
+  var d = (typeof v === 'number') ? new Date(v * 1000) : new Date(v);
+  if (isNaN(d.getTime())) return null;
+  return d.getUTCFullYear();
+}
+
+// Баблы-годы в шапке реестра: диапазон считается от самого раннего года среди
+// уже зарегистрированных документов до ТЕКУЩЕГО года системных часов — новый
+// бабл на следующий календарный год появляется сам, без правки кода.
+function renderRegYearBar() {
+  var bar = document.getElementById('regYearBar');
+  if (!bar) return;
+  var prevScroll = bar.scrollLeft;
+  var nowYear = new Date().getFullYear();
+  var minYear = nowYear;
+  state.records.forEach(function (r) {
+    var y = dateToYear(r.IssueDate);
+    if (y != null && y < minYear) minYear = y;
+  });
+  bar.innerHTML = '';
+  var allChip = document.createElement('span');
+  allChip.className = 'reg-year-chip' + (state.regYearFilter == null ? ' active' : '');
+  allChip.textContent = 'Все';
+  allChip.addEventListener('click', function () { setRegYearFilter(null); });
+  bar.appendChild(allChip);
+  for (var y = minYear; y <= nowYear; y++) {
+    (function (year) {
+      var chip = document.createElement('span');
+      chip.className = 'reg-year-chip' + (state.regYearFilter === year ? ' active' : '');
+      chip.textContent = String(year);
+      chip.addEventListener('click', function () { setRegYearFilter(year); });
+      bar.appendChild(chip);
+    })(y);
+  }
+  bar.scrollLeft = prevScroll;
+}
+
+function setRegYearFilter(year) {
+  state.regYearFilter = year;
+  renderRegYearBar();
+  renderRegistry();
+}
+
+(function initRegYearWheel() {
+  var bar = document.getElementById('regYearBar');
+  if (!bar) return;
+  bar.addEventListener('wheel', function (e) {
+    if (!e.deltaY) return;
+    e.preventDefault();
+    bar.scrollLeft += e.deltaY;
+  }, { passive: false });
+})();
+
 // ---------- Numbering ----------
 
 // Инвентарный номер: YY-NNNNN, сквозной по году, не привязан к изделию.
@@ -2366,6 +2429,9 @@ function renderRegistry() {
         .map(function (v) { return String(v || '').toLowerCase(); }).join(' ');
       return hay.indexOf(q) !== -1;
     });
+  }
+  if (state.regYearFilter != null) {
+    rows = rows.filter(function (r) { return dateToYear(r.IssueDate) === state.regYearFilter; });
   }
 
   if (!rows.length) {
