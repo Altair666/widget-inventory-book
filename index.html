@@ -85,7 +85,14 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .btn-primary:hover{opacity:.9}
 .btn-primary:disabled{opacity:.35;cursor:not-allowed}
 
-#regBody{overflow-x:auto}
+/* overflow-y:visible ОБЯЗАТЕЛЕН рядом с overflow-x:auto: если задать только
+   overflow-x, спецификация CSS требует, чтобы вычисленный overflow-y тоже
+   стал auto — #regBody тогда сам становится скролл-контейнером (даже не
+   имея вертикального переполнения) и превращается в контекст позиционирования
+   для position:sticky у .reg-table th ВНУТРИ себя, а не у реального скролл-
+   контейнера страницы (.main) — из-за этого шапка таблицы переставала быть
+   липкой и просто прокручивалась вместе со страницей. */
+#regBody{overflow-x:auto;overflow-y:visible}
 .reg-scroll-btn{border-radius:50%;border:1px solid var(--brd);background:var(--surf);color:var(--acc);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.16);transition:opacity .15s ease,visibility .15s ease}
 .reg-scroll-btn:hover{background:var(--acc-bg);border-color:var(--acc)}
 .reg-scroll-btn.hidden{opacity:0;visibility:hidden;pointer-events:none}
@@ -142,7 +149,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .tree-matrix{border-collapse:collapse;font-size:12px;white-space:nowrap}
 .tree-matrix th,.tree-matrix td{border-bottom:1px solid var(--brd);padding:4px 6px;text-align:center;vertical-align:middle}
 .tree-matrix thead th{position:sticky;top:0;background:var(--surf);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--tx2);border-bottom:2px solid var(--brd);z-index:1}
-.tree-matrix th.tm-name,.tree-matrix td.tm-name{text-align:left;white-space:nowrap;position:sticky;left:0;background:var(--surf);z-index:2;min-width:260px}
+.tree-matrix th.tm-name,.tree-matrix td.tm-name{text-align:left;white-space:nowrap;position:sticky;left:0;background:var(--surf);z-index:2;min-width:390px}
 .tree-matrix thead th.tm-name{z-index:3}
 .tm-th-name-row{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%}
 .tm-cols-btn{display:flex;align-items:center;justify-content:center;width:17px;height:17px;flex-shrink:0;border:none;border-radius:3px;background:transparent;color:#16b378;cursor:pointer;padding:0;opacity:1;transition:all .12s}
@@ -422,11 +429,11 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
     <div class="ph reg-ph">
       <span class="ph-title">Реестр документов</span>
       <div class="reg-year-wrap" id="regYearWrap">
-        <button class="reg-scroll-btn reg-year-scroll-btn reg-scroll-left" id="regYearScrollLeft" title="Прокрутить влево" type="button">
+        <button class="reg-scroll-btn reg-year-scroll-btn reg-scroll-left hidden" id="regYearScrollLeft" title="Прокрутить влево" type="button">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
         <div class="reg-year-bar" id="regYearBar"></div>
-        <button class="reg-scroll-btn reg-year-scroll-btn reg-scroll-right" id="regYearScrollRight" title="Прокрутить вправо" type="button">
+        <button class="reg-scroll-btn reg-year-scroll-btn reg-scroll-right hidden" id="regYearScrollRight" title="Прокрутить вправо" type="button">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
         </button>
       </div>
@@ -448,7 +455,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.59.0</footer>
+<footer class="ver-footer">v0.60.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -638,6 +645,11 @@ var state = {
   colOrder: [],           // порядок меток DOC_TYPES для столбцов матрицы состава (личная настройка браузера)
   colHidden: {},          // label -> true — столбец скрыт вручную, даже если в нём есть отметки
   colShown: {},           // label -> true — столбец показан вручную, даже если в нём нет отметок (переопределяет автоскрытие пустых)
+  colVisibleFreeze: {},   // label -> true — столбец был виден в ТЕКУЩЕЙ сессии работы с изделием (см. isColVisible);
+                          // НЕ персистится в localStorage (в отличие от colShown) и полностью сбрасывается в
+                          // rebuildTreeForSelectedProduct() при каждой смене изделия/цели поиска — так что
+                          // «замороженная» видимость не переживает переход к другому изделию, только clearAllChecks()
+                          // внутри одного и того же
 
   regYearFilter: null      // число года или null («Все») — фильтр реестра по году IssueDate, см. баблы в шапке реестра
 };
@@ -679,11 +691,15 @@ function orderedDocTypes() {
 }
 
 // Столбец видим, если он не скрыт вручную, и либо показан вручную, либо в нём
-// есть хотя бы одна отметка (checkedByLabel) — пустые столбцы, для которых
-// пользователь ничего не решал, скрываются автоматически.
+// есть хотя бы одна отметка (checkedByLabel), либо он уже был виден в текущей
+// сессии работы с изделием (colVisibleFreeze) — пустые столбцы, для которых
+// пользователь ничего не решал, скрываются автоматически, НО «Очистить все
+// отметки» не должен прятать столбцы, которые были видны до сброса (см.
+// clearAllChecks — он намеренно не трогает colVisibleFreeze).
 function isColVisible(label, checkedByLabel) {
   if (state.colHidden[label]) return false;
   if (state.colShown[label]) return true;
+  if (state.colVisibleFreeze[label]) return true;
   return !!checkedByLabel[label];
 }
 
@@ -1485,7 +1501,7 @@ function addExecutionRow(row, comp, execValue) {
   state.treeRows.splice(startIdx + 1, 0, { id: execId, depth: row.depth });
 
   var execCells = {};
-  defaultCodesForRow(row).forEach(function (c) { execCells[c] = true; });
+  defaultCodesForRow(row).forEach(function (c) { execCells[c] = true; state.colVisibleFreeze[c] = true; });
   state.cellChecked[execId] = execCells;
   state.cellLU[execId] = {};
   state.cellUD[execId] = {};
@@ -1496,6 +1512,10 @@ function addExecutionRow(row, comp, execValue) {
 
 function rebuildTreeForSelectedProduct() {
   state.pendingExecRowId = null;
+  // Новое изделие (или новая цель поиска) — своя, свежая заморозка видимости
+  // столбцов; старая заморозка от предыдущего изделия сюда не переносится
+  // (иначе пустые для нового изделия столбцы навсегда остались бы видны).
+  state.colVisibleFreeze = {};
   if (!state.selectedProductId || !state.componentsLoaded) {
     state.treeRows = [];
     state.cellChecked = {};
@@ -1525,9 +1545,19 @@ function rebuildTreeForSelectedProduct() {
   state.cellChecked = cells;
   state.cellLU = luCells;
   state.cellUD = udCells;
+  // Столбцы, ставшие видимыми из-за дефолтных отметок при открытии изделия,
+  // замораживаем сразу — это те самые «нужные строки [столбцы]», которые
+  // должны остаться на экране и после «Очистить все отметки».
+  Object.keys(checkedByLabelForTree()).forEach(function (label) { state.colVisibleFreeze[label] = true; });
   renderTree();
 }
 
+// «Очистить все отметки» стирает ТОЛЬКО сами галочки (cellChecked/cellLU/
+// cellUD) — colVisibleFreeze намеренно не трогается, поэтому столбцы,
+// которые были видны до сброса, остаются на экране (isColVisible проверяет
+// заморозку отдельно от checkedByLabel). Раньше сброс делал видимость
+// столбцов зависимой ТОЛЬКО от текущих (уже стёртых) отметок — внешне это
+// выглядело как «все строки/столбцы состава исчезли».
 function clearAllChecks() {
   Object.keys(state.cellChecked).forEach(function (id) {
     state.cellChecked[id] = {};
@@ -1645,7 +1675,13 @@ function renderTree() {
       var cb = document.createElement('input');
       cb.type = 'checkbox';
       cb.checked = !!rowCells[dt.label];
-      cb.addEventListener('change', function () { rowCells[dt.label] = cb.checked; });
+      cb.addEventListener('change', function () {
+        rowCells[dt.label] = cb.checked;
+        // Ручная отметка тоже замораживает видимость столбца — иначе
+        // последующий сброс всех отметок скрыл бы столбец, который
+        // пользователь только что сам открыл во время этой же сессии.
+        if (cb.checked) state.colVisibleFreeze[dt.label] = true;
+      });
       cell.appendChild(cb);
       if (dt.label !== 'ЧД' && dt.label !== 'СП') {
         var luBtn = document.createElement('button');
