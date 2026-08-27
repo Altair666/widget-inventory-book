@@ -303,13 +303,15 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
    при переносе на свою строку внутри .hybrid-tail (см. правило выше) они
    сохраняли свою "естественную" ширину/max-width:200px и вылезали за
    границы узкой карточки (в split-режиме на малой ширине gen-col).
-   flex:1 1 100% растягивает то поле, что видно (select или input — они
-   взаимоисключающие, см. syncTailMode), на всю ширину строки, на которую
-   оно перенесено, минус паддинг/gap самого .gen-card-name-wrap — то есть
-   "ширина столбца минус зазоры", а не фиксированный/содержимым заданный
-   размер. */
+   Карандаш .gen-tail-edit-btn (flex-shrink:0, 20px, см. .cell-edit-btn)
+   остаётся видимым потомком той же .gen-card-name-wrap и в этой же
+   перенесённой строке встаёт рядом с select/input — ширина 100% занимала бы
+   ВСЮ строку целиком, не оставляя места карандашу, и он проваливался на
+   ещё одну, третью строку. calc(100% - 23px) = 100% строки минус 20px
+   (ширина .cell-edit-btn) минус 3px (gap самого .gen-card-name-wrap) —
+   ровно столько же места, сколько карандаш и так съедает через gap. */
 .gen-card-content.gc-shrink .gen-card-name-wrap.hybrid-tail .gen-tail-select,
-.gen-card-content.gc-shrink .gen-card-name-wrap.hybrid-tail .gen-tail-custom-input{flex:1 1 100%;width:100%;max-width:none;min-width:0}
+.gen-card-content.gc-shrink .gen-card-name-wrap.hybrid-tail .gen-tail-custom-input{flex:1 1 calc(100% - 23px);width:calc(100% - 23px);max-width:none;min-width:0}
 .gen-card-content.gc-shrink .gen-card-box{gap:2px;padding:0 4px}
 .gen-card-content.gc-shrink .gen-card-box-label,.gen-card-content.gc-shrink .gen-card-box select,.gen-card-content.gc-shrink .gen-card-box input,.gen-card-content.gc-shrink .gen-card-changenum-value{font-size:10px}
 /* Раньше label «Формат» скрывался в gc-shrink только у :not(.fmt-other) —
@@ -496,7 +498,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.63.0</footer>
+<footer class="ver-footer">v0.64.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -1991,6 +1993,26 @@ var SPLIT_DRAG_THRESHOLD = 4;
     var wasSplit = !!state.splitMode;
     var prevGenExpanded = state.genExpanded;
     var moved = false;
+    var maxTreeWidth = 900;
+
+    // .tree-col растёт до тех пор, пока .gen-col (min-width — см.
+    // .tree-layout.split-mode .gen-col в CSS) физически помещается рядом с
+    // ним в той же строке flex-контейнера — иначе .gen-col (у которого
+    // flex-shrink запрещён ниже min-width) переносится flex-wrap на новую
+    // строку и визуально исчезает из видимой области, будто «закрылся сам».
+    // Раньше ширина .tree-col ограничивалась только константой 900px, без
+    // учёта реальной ширины контейнера — предел вычисляется динамически
+    // при каждом начале перетаскивания.
+    function computeMaxTreeWidth() {
+      var genTransferEl = document.querySelector('.gen-transfer');
+      var genColEl = document.querySelector('.gen-col');
+      if (!genColEl) return 900;
+      var genColMinWidth = parseFloat(getComputedStyle(genColEl).minWidth) || 480;
+      var gap = parseFloat(getComputedStyle(layout).columnGap) || 12;
+      var genTransferWidth = genTransferEl ? genTransferEl.getBoundingClientRect().width : 22;
+      var layoutWidth = layout.getBoundingClientRect().width;
+      return layoutWidth - gap * 2 - genTransferWidth - genColMinWidth;
+    }
 
     function onMove(ev) {
       var dx = ev.pageX - startX;
@@ -2004,8 +2026,9 @@ var SPLIT_DRAG_THRESHOLD = 4;
         }
         layout.classList.add('dragging-split');
         handle.classList.add('dragging');
+        maxTreeWidth = computeMaxTreeWidth();
       }
-      var w = Math.max(220, Math.min(900, Math.round(startWidth + dx)));
+      var w = Math.max(220, Math.min(900, maxTreeWidth, Math.round(startWidth + dx)));
       state.splitTreeWidth = w;
       layout.style.setProperty('--split-tree-w', w + 'px');
     }
