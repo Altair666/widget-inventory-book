@@ -189,7 +189,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .gen-col{border:1px solid var(--brd);border-radius:var(--r);background:var(--surf2);display:flex;flex-direction:column;max-height:360px;overflow:hidden;transition:flex-basis .18s ease,flex-grow .18s ease,max-width .18s ease,min-width .18s ease,margin-left .18s ease,opacity .16s ease,border-color .18s ease}
 .gen-list{overflow-y:auto;flex:1}
 .gen-empty{padding:14px;text-align:center;color:var(--tx3);font-size:11px}
-.gen-card{position:relative;display:flex;align-items:center;flex-wrap:wrap;gap:4px;padding:4px 28px 4px 10px;border-bottom:1px solid var(--brd)}
+.gen-card{position:relative;display:flex;align-items:center;flex-wrap:nowrap;gap:4px;padding:4px 28px 4px 10px;border-bottom:1px solid var(--brd)}
 .gen-card:last-child{border-bottom:none}
 .gen-card:hover{background:var(--grn-bg)}
 .gen-card-designation{font-family:var(--mono);font-size:12px;color:var(--acc);white-space:nowrap;flex-shrink:0;width:150px;overflow:hidden;text-overflow:ellipsis}
@@ -215,13 +215,15 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .gen-card-format-other.on{display:block}
 .gen-card-box-change{background:var(--grn-bg);border-color:var(--grn-brd)}
 .gen-card-changenum-value{width:34px;font-family:var(--mono);font-size:12px;font-weight:400;color:var(--tx);white-space:nowrap;text-align:right}
-.gen-card-remove{position:absolute;top:4px;right:6px;border:none;background:transparent;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:2px}
+.gen-card-remove{position:absolute;top:50%;right:6px;transform:translateY(-50%);border:none;background:transparent;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:2px}
 
 /* Компактное отображение карточки формируемого списка — постоянный
    базовый вид (не переключалка, см. историю v0.52.0). Крестик удаления
    (.gen-card-remove) вынесен из потока (position:absolute у угла
-   .gen-card, который сам стал position:relative) — по прямой просьбе,
-   чтобы × не двигался НИ ПРИ КАКОМ переносе строк внутри карточки.
+   .gen-card, который сам стал position:relative), закреплён по
+   вертикальному центру карточки (top:50%;transform:translateY(-50%)) —
+   по прямой просьбе, чтобы × не двигался НИ ПРИ КАКОМ переносе строк
+   внутри карточки и всегда стоял по центру высоты блока, а не у верха.
    .gen-card-controls (Формат/Листов/Изм.) — margin-left:auto прижимает
    его к правому краю той строки, на которой он оказался (работает и
    когда он ещё в одной строке с наименованием, и когда перенесён на
@@ -229,18 +231,26 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
    для его собственных детей, когда сам блок принудительно растянут на
    всю ширину (см. вторую @container-ступень ниже).
 
-   Деградация при сужении .gen-col — управляемая, в две явные ступени
-   через @container, а не полагается на случайный natural overflow-wrap
-   (порядок по прямой просьбе пользователя):
-   1) ~480px — СНАЧАЛА сжимаются подписи/шрифт/поля внутри
-      Формат/Листов/Изм. (и наименование хвоста Д-Д5 получает
-      flex-wrap, чтобы список/поле переносились внутри себя) — карточка
-      остаётся в одну строку дольше за счёт этого сжатия;
-   2) ~340px — когда сжатия уже недостаточно, .gen-card-controls
-      принудительно переносится на свою строку (flex-basis:100%) — а
-      раз строка теперь своя и просторная, шрифт/подписи в блоках
-      ВОЗВРАЩАЮТСЯ к полному размеру (сжатие было нужно только чтобы
-      оттянуть перенос, не после него). */
+   Деградация при сужении .gen-col — управляемая, в три явных шага,
+   в строго заданном пользователем порядке. .gen-card сам по себе
+   flex-wrap:nowrap (НЕ wrap) — это ключевое: перенос строки внутри
+   карточки разрешается только принудительно, на нужном шаге, а не
+   когда браузеру не хватило места (natural wrap раньше срабатывал
+   слишком рано и ломал порядок шагов):
+   1) без брейкпоинта, непрерывно — .gen-card-name-wrap (flex:1 1 120px)
+      единственный "резиновый" элемент в строке (designation и controls
+      flex-shrink:0), поэтому по мере сужения он первым отдаёт ширину —
+      наименование переходит на 2 строки (line-clamp) раньше всего;
+   2) ~480px — когда наименование уже сжато до минимума, начинают
+      сжиматься подписи/шрифт/поля внутри Формат/Листов/Изм. (и
+      наименование хвоста Д-Д5 получает свой internal flex-wrap) —
+      карточка остаётся в одну строку дольше за счёт этого сжатия;
+   3) ~340px — когда сжатия уже недостаточно, .gen-card получает
+      flex-wrap:wrap И .gen-card-controls принудительно переносится на
+      свою строку (flex-basis:100%) — а раз строка теперь своя и
+      просторная, шрифт/подписи в блоках ВОЗВРАЩАЮТСЯ к полному размеру
+      (сжатие из шага 2 было нужно только чтобы оттянуть перенос, не
+      после него). */
 .gen-col{container-type:inline-size}
 @container (max-width:480px){
   .gen-card-name{font-size:10px}
@@ -255,6 +265,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   .gen-card-changenum-value{width:26px}
 }
 @container (max-width:340px){
+  .gen-card{flex-wrap:wrap}
   .gen-card-controls{flex-basis:100%}
   .gen-card-name{font-size:12px}
   .gen-card-box{gap:3px;padding:0 5px}
@@ -418,7 +429,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.54.0</footer>
+<footer class="ver-footer">v0.55.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
