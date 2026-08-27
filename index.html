@@ -69,9 +69,9 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 
 .ac-wrap{position:relative}
 #fProductInput{padding-right:26px}
-.ac-clear-btn{position:absolute;top:50%;right:6px;transform:translateY(-50%);display:none;align-items:center;justify-content:center;width:18px;height:18px;border:none;border-radius:50%;background:transparent;color:var(--tx3);cursor:pointer;padding:0;transition:all .12s}
+.ac-clear-btn{position:absolute;top:50%;right:6px;transform:translateY(-50%);display:none;align-items:center;justify-content:center;width:18px;height:18px;border:none;border-radius:50%;background:transparent;color:var(--red);cursor:pointer;padding:0;transition:all .12s}
 .ac-clear-btn.on{display:flex}
-.ac-clear-btn:hover{background:var(--surf3);color:var(--tx2)}
+.ac-clear-btn:hover{background:var(--red-bg);color:var(--red)}
 .ac-drop{position:absolute;top:34px;left:0;right:0;background:var(--surf);border:1px solid var(--brd);border-radius:var(--r);z-index:100;max-height:220px;overflow-y:auto;display:none;box-shadow:0 4px 12px rgba(0,0,0,.08)}
 .ac-drop.on{display:block}
 .ac-item{padding:6px 9px;cursor:pointer;transition:background .1s;display:flex;align-items:center;gap:7px}
@@ -220,9 +220,13 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .gen-card-name-input{height:24px;font-size:12px}
 .gen-card-name-wrap .gen-card-name-input{flex:1 1 60px;min-width:60px;width:auto}
 .gen-card-name-base{flex:0 1 auto;min-width:0;max-width:45%;font-size:12px;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gen-tail-select{flex:0 0 auto;width:auto;max-width:200px;height:22px;font-size:12px;font-family:inherit;color:var(--tx);background:var(--surf);border:1px solid var(--brd);border-radius:3px;padding:0 4px;cursor:pointer}
+.gen-tail-select{flex:0 0 auto;width:calc(var(--tail-cell-ch,10ch) + 20px);height:22px;font-size:12px;font-family:inherit;color:var(--tx);background:var(--surf);border:1px solid var(--brd);border-radius:3px;padding:0 4px;cursor:pointer}
 .gen-tail-select:hover{border-color:var(--acc)}
-.gen-tail-custom-input{flex:1 1 70px;min-width:56px;height:22px;font-size:12px}
+.gen-tail-custom-wrap{position:relative;display:inline-flex;align-items:center;flex:0 0 auto;width:calc(var(--tail-cell-ch,10ch) + 46px);min-width:56px}
+.gen-tail-custom-input{width:100%;height:22px;font-size:12px;padding-right:46px}
+.gen-tail-custom-wrap .cell-edit-btn{position:absolute;top:50%;transform:translateY(-50%)}
+.gen-tail-custom-wrap .cell-edit-btn.save{right:22px}
+.gen-tail-custom-wrap .cell-edit-btn.cancel{right:2px}
 .gen-card-controls{display:flex;align-items:center;justify-content:flex-end;gap:5px;flex-shrink:0;flex-wrap:nowrap;margin-left:auto}
 .gen-card-box{display:flex;align-items:center;justify-content:center;gap:3px;height:26px;width:auto;padding:0 5px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf);flex-shrink:0}
 .gen-card-box-label{font-size:12px;font-weight:400;color:var(--tx);white-space:nowrap}
@@ -235,7 +239,8 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .gen-card-format-other.on{display:block}
 .gen-card-box-change{background:var(--grn-bg);border-color:var(--grn-brd)}
 .gen-card-changenum-value{width:34px;font-family:var(--mono);font-size:12px;font-weight:400;color:var(--tx);white-space:nowrap;text-align:right}
-.gen-card-remove{flex-shrink:0;border:none;background:transparent;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:2px}
+.gen-card-remove{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;flex-shrink:0;border:none;border-radius:50%;background:transparent;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:0;transition:all .12s}
+.gen-card-remove:hover{background:var(--red-bg)}
 
 /* Компактное отображение карточки формируемого списка — постоянный
    базовый вид (не переключалка, см. историю v0.52.0). designation/name/
@@ -254,6 +259,20 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
    v0.55/56 (× наезжал на перенесённый текст) — тот баг был у
    position:absolute-раскладки; здесь × обычный flex-элемент внутри
    controlsWrap, который целиком двигается как атомарный блок.
+
+   v0.65.0: общего правого края (margin-left:auto) для реального
+   центрирования "друг над другом" НЕДОСТАТОЧНО — nameEditBtn это
+   .cell-edit-btn с фиксированной шириной 20px, а .gen-card-remove раньше
+   был текстом "×" с padding:2px без фиксированной ширины (~14px по
+   контенту глифа) — при равном правом крае разная ширина бокса даёт
+   разный центр значка. .gen-card-remove теперь тоже 20×20 (display:
+   inline-flex, align-items/justify-content:center) — центры обоих значков
+   совпадают. Заодно даёт круглую подсветку при наведении (border-radius:
+   50%, hover-фон var(--red-bg)) по образцу .ac-clear-btn (см. запрос
+   "кружочек подсветки, как в отмене изделия") — зазоры до соседних
+   блоков даёт существующий gap:5px в .gen-card-controls, менять не
+   пришлось: рост бокса с ~14px до 20px не выходит за правый padding
+   .gen-card (8px), т.к. бокс по-прежнему прижат тем же правым краем.
 
    Деградация при сужении .gen-col — управляемая, в три явных шага, в
    строго заданном пользователем порядке. Вместо расчётных пиксельных
@@ -297,21 +316,25 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .gen-col{container-type:inline-size}
 .gen-card-content.gc-shrink .gen-card-name{font-size:10px}
 .gen-card-content.gc-shrink .gen-card-name-wrap.hybrid-tail{flex-wrap:wrap}
-/* .gen-tail-select (flex-shrink:0, чтобы не сжимать текст опции до
-   нечитаемого) и .gen-tail-custom-input (flex:1 1 70px, но с
-   min-width:56px, не даёт сжаться дальше) ничем не ограничены сверху —
-   при переносе на свою строку внутри .hybrid-tail (см. правило выше) они
-   сохраняли свою "естественную" ширину/max-width:200px и вылезали за
-   границы узкой карточки (в split-режиме на малой ширине gen-col).
-   Карандаш .gen-tail-edit-btn (flex-shrink:0, 20px, см. .cell-edit-btn)
-   остаётся видимым потомком той же .gen-card-name-wrap и в этой же
-   перенесённой строке встаёт рядом с select/input — ширина 100% занимала бы
-   ВСЮ строку целиком, не оставляя места карандашу, и он проваливался на
-   ещё одну, третью строку. calc(100% - 23px) = 100% строки минус 20px
-   (ширина .cell-edit-btn) минус 3px (gap самого .gen-card-name-wrap) —
-   ровно столько же места, сколько карандаш и так съедает через gap. */
+/* .gen-tail-select и .gen-tail-custom-wrap (с v0.65.0 — обёртка вокруг
+   .gen-tail-custom-input + галочки/крестика, см. renderGenList; сами
+   галочка/крестик теперь position:absolute ВНУТРИ обёртки, а не отдельные
+   flex-соседи в name-wrap — раньше при появлении своего текста они
+   добавляли ещё 2 flex-элемента в строку и ломали перенос) в базовом
+   состоянии сами по себе шириной в var(--tail-cell-ch) (максимальная длина
+   значения хвоста для этого типа документа, считается в JS) — ничем не
+   ограничены сверху при переносе на свою строку внутри .hybrid-tail (см.
+   правило выше), из-за чего вылезали за границы узкой карточки (в
+   split-режиме на малой ширине gen-col). Карандаш .gen-tail-edit-btn
+   (flex-shrink:0, 20px, см. .cell-edit-btn) остаётся видимым потомком той
+   же .gen-card-name-wrap и в этой же перенесённой строке встаёт рядом с
+   select/wrap — ширина 100% занимала бы ВСЮ строку целиком, не оставляя
+   места карандашу, и он проваливался на ещё одну, третью строку.
+   calc(100% - 23px) = 100% строки минус 20px (ширина .cell-edit-btn) минус
+   3px (gap самого .gen-card-name-wrap) — ровно столько же места, сколько
+   карандаш и так съедает через gap. */
 .gen-card-content.gc-shrink .gen-card-name-wrap.hybrid-tail .gen-tail-select,
-.gen-card-content.gc-shrink .gen-card-name-wrap.hybrid-tail .gen-tail-custom-input{flex:1 1 calc(100% - 23px);width:calc(100% - 23px);max-width:none;min-width:0}
+.gen-card-content.gc-shrink .gen-card-name-wrap.hybrid-tail .gen-tail-custom-wrap{flex:1 1 calc(100% - 23px);width:calc(100% - 23px);max-width:none;min-width:0}
 .gen-card-content.gc-shrink .gen-card-box{gap:2px;padding:0 4px}
 .gen-card-content.gc-shrink .gen-card-box-label,.gen-card-content.gc-shrink .gen-card-box select,.gen-card-content.gc-shrink .gen-card-box input,.gen-card-content.gc-shrink .gen-card-changenum-value{font-size:10px}
 /* Раньше label «Формат» скрывался в gc-shrink только у :not(.fmt-other) —
@@ -498,7 +521,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.64.0</footer>
+<footer class="ver-footer">v0.65.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -2257,10 +2280,20 @@ function renderGenList() {
       var matchesVariant = tailVariants.some(function (v) {
         return String(v.fullName || '').trim().toLowerCase() === String(currentTail).trim().toLowerCase();
       });
+      // Ширина ячейки Д в развёрнутом виде — по самому длинному из доступных
+      // значений (текущее + все варианты каталога), а не резиновая на весь
+      // остаток строки: так select/wrap не "гуляют" в ширину при переключении
+      // между вариантами и не занимают больше места, чем реально нужно тексту.
+      var tailMaxLen = tailVariants.reduce(function (m, v) {
+        var len = String(v.fullName || '').trim().length;
+        return len > m ? len : m;
+      }, Math.max(currentTail.length, 6));
+      var tailCellCh = (tailMaxLen + 1) + 'ch';
 
       var tailSelect = document.createElement('select');
       tailSelect.className = 'gen-tail-select';
       tailSelect.title = 'Выбрать вариант хвоста наименования из каталога';
+      tailSelect.style.setProperty('--tail-cell-ch', tailCellCh);
       tailVariants.forEach(function (v) {
         var optText = String(v.fullName || '').trim();
         if (!optText) return;
@@ -2278,21 +2311,32 @@ function renderGenList() {
       tailCustomInput.placeholder = 'Свой текст хвоста';
       tailCustomInput.value = currentTail;
 
-      // Как и в «Формате» (formatSel/otherInput ниже): select и поле ввода
-      // делят одно и то же место в строке, видно только одно — иначе оба
-      // контрола вместе не помещаются в узкую карточку (особенно в
-      // split-режиме) и перескакивают на следующую строку, из-за чего
-      // казалось, что «появляется новое окно». Базовый текст (basePrefix)
-      // играет роль постоянно видимого «ярлыка», как formatLabel — клик по
-      // нему в режиме своего варианта возвращает к выбору из каталога.
+      // Как и в «Формате» (formatSel/otherInput ниже): select и обёртка
+      // с полем ввода делят одно и то же место в строке, видно только
+      // одно — иначе оба контрола вместе не помещаются в узкую карточку
+      // (особенно в split-режиме) и перескакивают на следующую строку, из-за
+      // чего казалось, что «появляется новое окно». Базовый текст
+      // (basePrefix) играет роль постоянно видимого «ярлыка», как
+      // formatLabel — клик по нему в режиме своего варианта возвращает к
+      // выбору из каталога.
+      // v0.65.0: галочка/крестик — position:absolute ВНУТРИ tailCustomWrap
+      // (см. .gen-tail-custom-wrap в CSS), а не отдельные flex-соседи в
+      // name-wrap — раньше при появлении своего текста они добавляли ещё 2
+      // "живых" flex-элемента в и без того тесную строку name-wrap и ломали
+      // перенос ("снова поломка, когда добавляешь новую Д"). Обёртка —
+      // единственный flex-элемент со стороны name-wrap.
+      var tailCustomWrap = document.createElement('span');
+      tailCustomWrap.className = 'gen-tail-custom-wrap';
+      tailCustomWrap.style.setProperty('--tail-cell-ch', tailCellCh);
       var tailCustomSaveBtn = iconButton('cell-edit-btn save', checkSvg(), 'Применить свой вариант');
       var tailCustomCancelBtn = iconButton('cell-edit-btn cancel', xSvg(), 'Отмена');
+      tailCustomWrap.appendChild(tailCustomInput);
+      tailCustomWrap.appendChild(tailCustomSaveBtn);
+      tailCustomWrap.appendChild(tailCustomCancelBtn);
       function syncTailMode() {
         var isCustom = tailSelect.value === CUSTOM_TAIL_VALUE;
         tailSelect.style.display = isCustom ? 'none' : '';
-        tailCustomInput.style.display = isCustom ? '' : 'none';
-        tailCustomSaveBtn.style.display = isCustom ? '' : 'none';
-        tailCustomCancelBtn.style.display = isCustom ? '' : 'none';
+        tailCustomWrap.style.display = isCustom ? 'inline-flex' : 'none';
         basePrefix.style.cursor = isCustom ? 'pointer' : 'default';
       }
       syncTailMode();
@@ -2344,9 +2388,7 @@ function renderGenList() {
       });
 
       nameWrap.appendChild(tailSelect);
-      nameWrap.appendChild(tailCustomInput);
-      nameWrap.appendChild(tailCustomSaveBtn);
-      nameWrap.appendChild(tailCustomCancelBtn);
+      nameWrap.appendChild(tailCustomWrap);
 
       var nameEditBtn = iconButton('cell-edit-btn gen-tail-edit-btn', pencilSvg(), 'Изменить наименование полностью');
       nameEditBtn.addEventListener('click', function () {
