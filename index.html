@@ -429,7 +429,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.55.0</footer>
+<footer class="ver-footer">v0.56.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -2473,11 +2473,6 @@ function updateRegScrollBtns() {
   var left = document.getElementById('regScrollLeft');
   var right = document.getElementById('regScrollRight');
   if (!body || !left || !right) return;
-  body.addEventListener('wheel', function (e) {
-    if (!e.deltaY) return;
-    e.preventDefault();
-    body.scrollLeft += e.deltaY;
-  }, { passive: false });
   body.addEventListener('scroll', updateRegScrollBtns);
   window.addEventListener('resize', updateRegScrollBtns);
   left.addEventListener('click', function () { body.scrollBy({ left: -240, behavior: 'smooth' }); });
