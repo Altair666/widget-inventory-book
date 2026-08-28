@@ -521,7 +521,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.65.0</footer>
+<footer class="ver-footer">v0.66.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -684,6 +684,7 @@ var DEFAULT_OPTIONS = {
 var state = {
   records: [],          // registry records, raw Grist rows (real colIds)
   recordsLoaded: false,
+  recordsByDesignation: {}, // String(designation) -> {record, n} with highest ChangeNumber — built once per onRecords, see buildRecordsByDesignationIndex()
   changeNumberFloor: {}, // String(designation) -> highest ChangeNumber known taken (monotonic, never regresses)
   options: Object.assign({}, DEFAULT_OPTIONS),
 
@@ -909,6 +910,7 @@ grist.onOptions(function (options) {
 grist.onRecords(function (records) {
   state.recordsLoaded = true;
   state.records = records;
+  state.recordsByDesignation = buildRecordsByDesignationIndex(records);
   updateConnLabel();
   refreshChangeNumberFloorsFromServer();
   updateComputedFields();
@@ -2050,6 +2052,12 @@ var SPLIT_DRAG_THRESHOLD = 4;
         layout.classList.add('dragging-split');
         handle.classList.add('dragging');
         maxTreeWidth = computeMaxTreeWidth();
+        // Перетаскивание отключает CSS-transition на .tree-col/.gen-col
+        // (см. .dragging-split в CSS) и вместо этого меняет ширину на каждый
+        // mousemove напрямую — без подавления это гоняло бы тот же самый
+        // дорогой полный пересчёт (см. genDegradationSuppressed) на каждый
+        // кадр драга; финальный пересчёт — один раз в onUp().
+        genDegradationSuppressed = true;
       }
       var w = Math.max(220, Math.min(900, maxTreeWidth, Math.round(startWidth + dx)));
       state.splitTreeWidth = w;
@@ -2061,6 +2069,8 @@ var SPLIT_DRAG_THRESHOLD = 4;
       if (moved) {
         layout.classList.remove('dragging-split');
         handle.classList.remove('dragging');
+        genDegradationSuppressed = false;
+        updateGenCardDegradation();
         try { localStorage.setItem(SPLIT_WIDTH_KEY, String(state.splitTreeWidth)); } catch (e) { /* нечего сохранять — переживёт только текущую сессию */ }
         return;
       }
@@ -2507,7 +2517,21 @@ function renderGenList() {
 // Чтения/записи разнесены по отдельным проходам (не чередуются по карточкам),
 // иначе каждая карточка вызывает свой forced reflow — при перетаскивании
 // разделителя панелей (.btn-split-drag) это ощущалось как тормоза (v0.57.0).
+//
+// genDegradationSuppressed (v0.66.0): .gen-col меняет ширину не только
+// одномоментно, но и НЕПРЕРЫВНО — на протяжении .18s CSS-transition при
+// «»»/«←» (см. .gen-col{transition:...} и .gen-expanded/.gen-collapsed) и на
+// каждый mousemove при перетаскивании «<->» (initSplitDrag). ResizeObserver
+// срабатывает на каждый промежуточный кадр этих изменений, и без подавления
+// updateGenCardDegradation() (полный проход с scrollWidth/clientWidth,
+// то есть forced reflow, по ВСЕМ карточкам) гонялась на каждый такой кадр —
+// чем больше карточек в формируемом списке, тем заметнее тормоза. Реальный
+// результат нужен только один раз — когда ширина уже устоялась (конец
+// transition/drag), поэтому промежуточные срабатывания просто пропускаются.
+var genDegradationSuppressed = false;
+
 function updateGenCardDegradation() {
+  if (genDegradationSuppressed) return;
   var all = document.querySelectorAll('.gen-card-content');
   all.forEach(function (content) { content.classList.remove('gc-shrink', 'gc-wrap'); });
   var needShrink = [];
@@ -2533,6 +2557,26 @@ function updateGenCardDegradation() {
     });
   });
   ro.observe(col);
+
+  // «»»/«←» переключают .gen-expanded/.gen-collapsed, которые анимируют
+  // ширину .gen-col через CSS transition — пока она идёт, подавляем
+  // промежуточные пересчёты и делаем финальный один раз по её завершении.
+  // .gen-col транзиционирует НЕСКОЛЬКО свойств одновременно с чуть разной
+  // длительностью (opacity — .16s, остальные — .18s), transitionend
+  // срабатывает по каждому отдельно — фильтруем по свойству, которое
+  // реально меняет ширину карточек, иначе opacity закончился бы на 20ms
+  // раньше и снял подавление до того, как ширина реально устоялась.
+  var GEN_COL_WIDTH_PROPS = { 'flex-basis': true, 'max-width': true, 'min-width': true, 'flex-grow': true };
+  col.addEventListener('transitionrun', function (e) {
+    if (e.target === col && GEN_COL_WIDTH_PROPS[e.propertyName]) genDegradationSuppressed = true;
+  });
+  ['transitionend', 'transitioncancel'].forEach(function (evt) {
+    col.addEventListener(evt, function (e) {
+      if (e.target !== col || !GEN_COL_WIDTH_PROPS[e.propertyName]) return;
+      genDegradationSuppressed = false;
+      updateGenCardDegradation();
+    });
+  });
 })();
 
 // Массовая регистрация: каждая отмеченная пара (компонент, тип документа)
@@ -2791,6 +2835,25 @@ function computeNextChangeNumber(designation) {
   return (key in state.changeNumberFloor) ? state.changeNumberFloor[key] + 1 : 0;
 }
 
+// Индекс "обозначение -> последняя версия записи" строится ОДИН раз на
+// каждый grist.onRecords (реестр меняется редко — только когда что-то
+// правится/добавляется), а не пересчитывается линейным проходом по ВСЕМ
+// state.records при каждом обращении. При растущем реестре (сотни/тысячи
+// записей) старый вариант latestRecordForDesignation() ниже давал
+// заметные тормоза именно на «»» (см. defaultsForNewVersion) — он вызывал
+// полный проход по всем записям на КАЖДЫЙ отмеченный документ в пачке.
+function buildRecordsByDesignationIndex(records) {
+  var idx = {};
+  records.forEach(function (r) {
+    var key = String(r.DocumentDesignation || '');
+    if (!key) return;
+    var n = parseInt(String(r.ChangeNumber || '0').replace(/[^0-9]/g, ''), 10) || 0;
+    var cur = idx[key];
+    if (!cur || n > cur.n) idx[key] = { record: r, n: n };
+  });
+  return idx;
+}
+
 // Формат и кол-во листов новой версии документа подтягиваются из последней
 // зарегистрированной версии с тем же обозначением (простое исправление
 // обычно не меняет ни то, ни другое) — но остаются обычными полями формы,
@@ -2798,14 +2861,8 @@ function computeNextChangeNumber(designation) {
 // больше (или изменился формат).
 function latestRecordForDesignation(designation) {
   if (!designation) return null;
-  var key = String(designation);
-  var best = null, bestN = -1;
-  state.records.forEach(function (r) {
-    if (String(r.DocumentDesignation) !== key) return;
-    var n = parseInt(String(r.ChangeNumber || '0').replace(/[^0-9]/g, ''), 10) || 0;
-    if (n > bestN) { bestN = n; best = r; }
-  });
-  return best;
+  var entry = state.recordsByDesignation[String(designation)];
+  return entry ? entry.record : null;
 }
 
 function defaultsForNewVersion(designation) {
