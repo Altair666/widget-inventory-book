@@ -521,7 +521,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.71.0</footer>
+<footer class="ver-footer">v0.72.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -1378,7 +1378,12 @@ function searchExistingDocuments(q, excludeDn) {
     // найдена — используем сохранённый Product как резервный вариант.
     var productId = resolveRefId(r.Product, 'decimal_number');
     var productNameId = resolveRefId(r.ProductName, 'name');
-    var stemComp = findComponentByDecimalNumber(stemForDocDesignation(dn, r.DocTypeCode));
+    // DocTypeCode теперь пуст для большинства записей (тип хранится ссылкой
+    // в NameDocType, текстом остаются только модификаторы ЛУ/УД) — берём
+    // Label оттуда (NameDocType_dn) как резерв, чтобы поиск существующих
+    // документов и preset чекбокса типа продолжали работать как раньше.
+    var effectiveTypeLabel = r.DocTypeCode || r.NameDocType_dn || '';
+    var stemComp = findComponentByDecimalNumber(stemForDocDesignation(dn, effectiveTypeLabel));
     var linkId = stemComp ? stemComp.id : productId;
     var pnameComp = state.componentsById[productNameId];
     var pseudo = {
@@ -1390,7 +1395,7 @@ function searchExistingDocuments(q, excludeDn) {
       decimal_number: dn,
       org_prefix: '',
       serial: '',
-      presetLabel: r.DocTypeCode || '',
+      presetLabel: effectiveTypeLabel,
       presetName: r.Name || ''
     };
     // Регистрируем в общей карте компонентов, чтобы selectProduct(id) и
