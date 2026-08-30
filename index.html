@@ -521,7 +521,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.72.0</footer>
+<footer class="ver-footer">v0.73.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -1090,12 +1090,11 @@ function loadDocTypes() {
 // Code/SkipNameSuffix у базовой записи метки, NeedsTail=true) — так пользователь
 // печатает свой хвост один раз, а дальше он появляется в выпадающем списке
 // (datalist в renderGenList) для повторного выбора вместо перепечатывания.
-// NameDocType в самой записи Inventory_book по-прежнему указывает на базовую
-// запись метки (см. nameFieldsForItem) — формула Name для needsTail-типов
-// берёт текст хвоста напрямую из NameTail, а не из FullName ссылки, так что
-// на какой именно вариант указывает NameDocType, на итоговый текст не влияет;
-// id нового варианта используется только как результат этой функции для тех,
-// кому он понадобится, и для пополнения каталога.
+// NameDocType в самой записи Inventory_book указывает именно на этот
+// найденный/созданный вариант (см. registerGeneratedList/nameFieldsForItem) —
+// формула Name для needsTail-типов берёт текст хвоста из $NameDocType.FullName,
+// поэтому id нового варианта не просто пополняет каталог, а используется как
+// итоговая ссылка записи.
 function ensureDocTypeVariant(label, fullNameText) {
   var text = String(fullNameText || '').trim();
   var base = DOC_TYPES.filter(function (d) { return d.label === label; })[0];
@@ -1610,7 +1609,14 @@ function addExecutionRow(row, comp, execValue) {
     primary_use: comp.primary_use,
     decimal_number: (comp.decimal_number || '') + '-' + execValue,
     org_prefix: comp.org_prefix,
-    serial: comp.serial
+    serial: comp.serial,
+    // Само число исполнения — отдельно от decimal_number (там оно уже
+    // вклеено в текст для обозначения). nameForItem()/nameFieldsForItem()
+    // берут его отсюда, чтобы дописать "(-NN)" в наименование и записать
+    // в столбец Variation — иначе оно терялось бы при переходе от строки-
+    // псевдокомпонента к записи Inventory_book (там decimal_number этой
+    // строки нигде не хранится, только NameNode на исходный узел).
+    execValue: execValue
   };
 
   // Вставляем СРАЗУ после строки-источника — там же, где до подтверждения
@@ -2200,13 +2206,19 @@ function nameForItem(item) {
     var modFull = fullNameForDocType(item.label);
     if (modFull) value = value + '. ' + modFull;
   }
+  // Исполнение — дописывается в последнюю очередь, поверх любого другого
+  // суффикса (см. addExecutionRow/comp.execValue и формулу Name на стороне
+  // Grist, которая делает то же самое через $Variation).
+  if (nodeComp && nodeComp.execValue) {
+    value = value + ' (-' + nodeComp.execValue + ')';
+  }
   return value;
 }
 
 // Наименование в Inventory_book — формульная колонка на стороне Grist
 // (пересчитывается из NameNode/NameNodeEspd/NameNodeEstd/NameDocType/
-// NameTail/ProductName; если ни одна из трёх Node-ссылок не заполнена —
-// берётся NameOverride как есть). NameNode/NameNodeEspd/NameNodeEstd —
+// Variation/ProductName; если ни одна из трёх Node-ссылок не
+// заполнена — берётся NameOverride как есть). NameNode/NameNodeEspd/NameNodeEstd —
 // три параллельных Ref-поля (на Components/ESPD_components/Estd_components
 // соответственно): в Grist нет полиморфной ссылки на "одну из нескольких
 // таблиц", поэтому у записи заполняется ровно одна из трёх. Виджет поэтому
@@ -2215,8 +2227,15 @@ function nameForItem(item) {
 // повторного прохода по реестру. nameForItem() выше остаётся локальным
 // JS-зеркалом той же формулы — только для мгновенного превью в форме, пока
 // запись ещё не создана и формула не может сработать.
-function nameFieldsForItem(item) {
-  var empty = { NameNode: 0, NameNodeEspd: 0, NameNodeEstd: 0, NameDocType: 0, NameTail: '', NameOverride: '' };
+// resolvedDocTypeId — id строки Doc_types с точным вариантом хвоста (см.
+// ensureDocTypeVariant), уже разрешённый ДО вызова этой функции в
+// registerGeneratedList(); если не передан (тип без needsTail, или хвост не
+// менялся), используется базовая запись метки. Формула Name достаёт текст
+// хвоста через $NameDocType.FullName — сам текст в Inventory_book отдельно
+// не хранится (бывший NameTail для этого больше не используется — колонка
+// переименована в Variation и хранит номер исполнения).
+function nameFieldsForItem(item, resolvedDocTypeId) {
+  var empty = { NameNode: 0, NameNodeEspd: 0, NameNodeEstd: 0, NameDocType: 0, Variation: '', NameOverride: '' };
   if (item.nameOverride != null) {
     return Object.assign({}, empty, { NameOverride: item.nameOverride });
   }
@@ -2228,6 +2247,11 @@ function nameFieldsForItem(item) {
     return Object.assign({}, empty, { NameOverride: item.presetName });
   }
   var comp = state.componentsById[item.compId];
+  // Исполнение (comp.execValue) — заполняется только у псевдокомпонентов,
+  // созданных через addExecutionRow(); дописывается формулой Name в самом
+  // конце наименования вне зависимости от того, какая из трёх Node-ссылок
+  // сработала ниже — см. nameForItem() для локального JS-зеркала того же.
+  var execVal = (comp && comp.execValue) ? comp.execValue : '';
   // ЛУ/УД (item.hostLabel) — не самостоятельный документ, а сопутствующий
   // лист к КОНКРЕТНОМУ документу-носителю (тот же узел, тип — hostLabel).
   // Ссылки на узел/тип пишутся от носителя. Собственный тип ЛУ/УД отдельным
@@ -2236,25 +2260,23 @@ function nameFieldsForItem(item) {
   // суффикс через Doc_types.lookupOne(Code=...).
   var hostLabel = item.hostLabel || item.label;
   var dtEntry = DOC_TYPES.filter(function (d) { return d.label === hostLabel; })[0];
-  var tail = '';
-  if (dtEntry && dtEntry.needsTail) {
-    tail = (item.tailOverride != null) ? item.tailOverride : fullNameForDocType(dtEntry.label);
-  }
+  var docTypeId = resolvedDocTypeId || ((dtEntry && dtEntry.id) ? dtEntry.id : 0);
   if (comp && comp.source === 'esp') {
-    return Object.assign({}, empty, { NameNodeEspd: comp.rawId });
+    return Object.assign({}, empty, { NameNodeEspd: comp.rawId, Variation: execVal });
   }
   if (comp && comp.source === 'est') {
-    return Object.assign({}, empty, { NameNodeEstd: comp.rawId });
+    return Object.assign({}, empty, { NameNodeEstd: comp.rawId, Variation: execVal });
   }
   if (!comp || comp.source !== 'cmp') {
     // Узел не найден — нет настоящей строки номенклатуры ни в одной из трёх
     // таблиц для ссылки, наименование остаётся текстом (единичное исключение).
+    // nameForItem() уже сам дописывает исполнение в текст в этом случае.
     return Object.assign({}, empty, { NameOverride: nameForItem(item) });
   }
   return Object.assign({}, empty, {
     NameNode: comp.rawId,
-    NameDocType: (dtEntry && dtEntry.id) ? dtEntry.id : 0,
-    NameTail: tail
+    NameDocType: docTypeId,
+    Variation: execVal
   });
 }
 
@@ -2682,24 +2704,31 @@ function registerGeneratedDocs() {
     // Прежде чем строить сами записи: для карточек с ручным хвостом (Д1-Д4),
     // текст которого ещё не встречался в Doc_types, заводим новую строку в
     // справочнике (см. ensureDocTypeVariant) — так «запись в реестр» пополняет
-    // и каталог вариантов, доступный дальше через datalist в карандашике.
-    // Дедуп по label+text внутри одной пачки — чтобы не создать две одинаковые
-    // строки, если несколько карточек в этой регистрации получили один и тот
-    // же новый хвост.
-    var seenVariantKeys = {};
+    // и каталог вариантов, доступный дальше через datalist в карандашике, а
+    // NameDocType создаваемой записи ссылается именно на этот вариант (не на
+    // базовую запись метки) — формула Name достаёт текст хвоста из его
+    // FullName. Дедуп по label+text внутри одной пачки — чтобы не создать две
+    // одинаковые строки, если несколько карточек в этой регистрации получили
+    // один и тот же новый хвост; itemVariantKey запоминает, каким ключом
+    // искать разрешённый id для каждой карточки после Promise.all.
+    var resolvedVariantIds = {};
+    var itemVariantKey = [];
     var variantPromises = [];
-    state.generatedList.forEach(function (item) {
-      if (item.tailOverride == null) return;
+    state.generatedList.forEach(function (item, idx) {
+      if (item.tailOverride == null) { itemVariantKey[idx] = null; return; }
       var text = item.tailOverride.trim();
-      if (!text) return;
+      if (!text) { itemVariantKey[idx] = null; return; }
       var key = item.label + '|' + text.toLowerCase();
-      if (seenVariantKeys[key]) return;
-      seenVariantKeys[key] = true;
-      variantPromises.push(ensureDocTypeVariant(item.label, text));
+      itemVariantKey[idx] = key;
+      if (key in resolvedVariantIds) return;
+      resolvedVariantIds[key] = null;
+      variantPromises.push(ensureDocTypeVariant(item.label, text).then(function (id) {
+        resolvedVariantIds[key] = id;
+      }));
     });
 
     return Promise.all(variantPromises).then(function () {
-      var recordsToCreate = state.generatedList.map(function (item) {
+      var recordsToCreate = state.generatedList.map(function (item, idx) {
         maxInv += 1;
         var padded = String(maxInv);
         while (padded.length < 5) padded = '0' + padded;
@@ -2711,7 +2740,9 @@ function registerGeneratedDocs() {
         bumpChangeNumberFloor(item.designation, changeNumber);
 
         var format = item.format === FORMAT_OTHER ? item.formatOther.trim() : item.format;
-        var nameFields = nameFieldsForItem(item);
+        var variantKey = itemVariantKey[idx];
+        var resolvedDocTypeId = variantKey ? resolvedVariantIds[variantKey] : null;
+        var nameFields = nameFieldsForItem(item, resolvedDocTypeId);
         var ext = item.label === 'Т5М' ? '.zip' : '.pdf';
         var fileName = item.designation.replace(/\s+/g, '') + '_изм' + pad2(changeNumber) + ext;
 
