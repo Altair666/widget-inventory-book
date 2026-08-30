@@ -521,7 +521,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.67.0</footer>
+<footer class="ver-footer">v0.68.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -2185,36 +2185,52 @@ function nameForItem(item) {
   return full ? (base + '. ' + full) : base;
 }
 
-// Наименование в Inventory_book — trigger-formula колонка на стороне Grist
-// (пересчитывается из NameNode/NameDocType/NameTail/ProductName; если
-// NameNode пуст — берётся NameOverride как есть). Виджет поэтому пишет не
-// готовый текст, а ссылки — динамическое обновление наименования при
-// переименовании узла/типа документа происходит на стороне Grist без
+// Наименование в Inventory_book — формульная колонка на стороне Grist
+// (пересчитывается из NameNode/NameNodeEspd/NameNodeEstd/NameDocType/
+// NameTail/ProductName; если ни одна из трёх Node-ссылок не заполнена —
+// берётся NameOverride как есть). NameNode/NameNodeEspd/NameNodeEstd —
+// три параллельных Ref-поля (на Components/ESPD_components/Estd_components
+// соответственно): в Grist нет полиморфной ссылки на "одну из нескольких
+// таблиц", поэтому у записи заполняется ровно одна из трёх. Виджет поэтому
+// пишет не готовый текст, а ссылку — динамическое обновление наименования
+// при переименовании узла/документа происходит на стороне Grist без
 // повторного прохода по реестру. nameForItem() выше остаётся локальным
 // JS-зеркалом той же формулы — только для мгновенного превью в форме, пока
 // запись ещё не создана и формула не может сработать.
 function nameFieldsForItem(item) {
-  var manual = (item.nameOverride != null) ? item.nameOverride : (item.presetName != null ? item.presetName : null);
-  if (manual != null) {
-    return { NameNode: 0, NameDocType: 0, NameTail: '', NameOverride: manual };
+  var empty = { NameNode: 0, NameNodeEspd: 0, NameNodeEstd: 0, NameDocType: 0, NameTail: '', NameOverride: '' };
+  if (item.nameOverride != null) {
+    return Object.assign({}, empty, { NameOverride: item.nameOverride });
+  }
+  if (item.presetName != null) {
+    // Повторная регистрация уже известного документа (найден по обозначению
+    // через searchExistingDocuments) — единичное исключение, текст переносится
+    // как есть (переиспользование реальной ссылки прежней версии — отдельная,
+    // ещё не согласованная доработка).
+    return Object.assign({}, empty, { NameOverride: item.presetName });
   }
   var comp = state.componentsById[item.compId];
-  if (!comp || comp.source !== 'cmp') {
-    // ESPD/ESTD-документ или узел не найден — нет настоящей строки Components
-    // для ссылки NameNode, наименование остаётся текстом (как раньше).
-    return { NameNode: 0, NameDocType: 0, NameTail: '', NameOverride: nameForItem(item) };
-  }
   var dtEntry = DOC_TYPES.filter(function (d) { return d.label === item.label; })[0];
   var tail = '';
   if (dtEntry && dtEntry.needsTail) {
     tail = (item.tailOverride != null) ? item.tailOverride : fullNameForDocType(dtEntry.label);
   }
-  return {
+  if (comp && comp.source === 'esp') {
+    return Object.assign({}, empty, { NameNodeEspd: comp.rawId });
+  }
+  if (comp && comp.source === 'est') {
+    return Object.assign({}, empty, { NameNodeEstd: comp.rawId });
+  }
+  if (!comp || comp.source !== 'cmp') {
+    // Узел не найден — нет настоящей строки номенклатуры ни в одной из трёх
+    // таблиц для ссылки, наименование остаётся текстом (единичное исключение).
+    return Object.assign({}, empty, { NameOverride: nameForItem(item) });
+  }
+  return Object.assign({}, empty, {
     NameNode: comp.rawId,
     NameDocType: (dtEntry && dtEntry.id) ? dtEntry.id : 0,
-    NameTail: tail,
-    NameOverride: ''
-  };
+    NameTail: tail
+  });
 }
 
 function renderGenList() {
