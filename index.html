@@ -521,7 +521,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.70.0</footer>
+<footer class="ver-footer">v0.71.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -2211,7 +2211,7 @@ function nameForItem(item) {
 // JS-зеркалом той же формулы — только для мгновенного превью в форме, пока
 // запись ещё не создана и формула не может сработать.
 function nameFieldsForItem(item) {
-  var empty = { NameNode: 0, NameNodeEspd: 0, NameNodeEstd: 0, NameDocType: 0, NameTail: '', NameOverride: '', NameDocTypeMod: 0 };
+  var empty = { NameNode: 0, NameNodeEspd: 0, NameNodeEstd: 0, NameDocType: 0, NameTail: '', NameOverride: '' };
   if (item.nameOverride != null) {
     return Object.assign({}, empty, { NameOverride: item.nameOverride });
   }
@@ -2225,24 +2225,21 @@ function nameFieldsForItem(item) {
   var comp = state.componentsById[item.compId];
   // ЛУ/УД (item.hostLabel) — не самостоятельный документ, а сопутствующий
   // лист к КОНКРЕТНОМУ документу-носителю (тот же узел, тип — hostLabel).
-  // Ссылки на узел/тип пишутся от носителя, а собственный тип ЛУ/УД
-  // (item.label) — отдельным полем NameDocTypeMod, которое формула Name
-  // дописывает суффиксом поверх готового имени носителя. Так не нужен
-  // self-ref на конкретную строку-носитель — «который именно документ»
-  // разруливается перечислением (узел, тип носителя), этого достаточно.
+  // Ссылки на узел/тип пишутся от носителя. Собственный тип ЛУ/УД отдельным
+  // полем не хранится — уже есть DocTypeCode (пишется ниже, в вызывающем
+  // коде, как item.label), формула Name сама смотрит на него и дописывает
+  // суффикс через Doc_types.lookupOne(Code=...).
   var hostLabel = item.hostLabel || item.label;
   var dtEntry = DOC_TYPES.filter(function (d) { return d.label === hostLabel; })[0];
-  var modEntry = item.hostLabel ? DOC_TYPES.filter(function (d) { return d.label === item.label; })[0] : null;
-  var modId = (modEntry && modEntry.id) ? modEntry.id : 0;
   var tail = '';
   if (dtEntry && dtEntry.needsTail) {
     tail = (item.tailOverride != null) ? item.tailOverride : fullNameForDocType(dtEntry.label);
   }
   if (comp && comp.source === 'esp') {
-    return Object.assign({}, empty, { NameNodeEspd: comp.rawId, NameDocTypeMod: modId });
+    return Object.assign({}, empty, { NameNodeEspd: comp.rawId });
   }
   if (comp && comp.source === 'est') {
-    return Object.assign({}, empty, { NameNodeEstd: comp.rawId, NameDocTypeMod: modId });
+    return Object.assign({}, empty, { NameNodeEstd: comp.rawId });
   }
   if (!comp || comp.source !== 'cmp') {
     // Узел не найден — нет настоящей строки номенклатуры ни в одной из трёх
@@ -2252,8 +2249,7 @@ function nameFieldsForItem(item) {
   return Object.assign({}, empty, {
     NameNode: comp.rawId,
     NameDocType: (dtEntry && dtEntry.id) ? dtEntry.id : 0,
-    NameTail: tail,
-    NameDocTypeMod: modId
+    NameTail: tail
   });
 }
 
