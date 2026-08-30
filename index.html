@@ -521,7 +521,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.68.0</footer>
+<footer class="ver-footer">v0.69.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -2647,11 +2647,21 @@ function registerGeneratedDocs() {
     });
 
     var freshFloor = {};
+    // Обозначение -> id записи с максимальным № изменения — используется
+    // ниже, чтобы связать ЛУ/УД с документом, который они утверждают/
+    // удостоверяют (ParentDocument), находя его по обозначению-«стеблю»
+    // (см. stemForDocDesignation).
+    var designationBestId = {};
+    var designationBestChange = {};
     ids.forEach(function (id, i) {
       var n = parseInt(String(changeNumbers[i] || '0').replace(/[^0-9]/g, ''), 10);
       var key = String(designations[i]);
       if (!(key in freshFloor) || n > freshFloor[key]) freshFloor[key] = n;
       bumpChangeNumberFloor(designations[i], n);
+      if (!(key in designationBestChange) || n > designationBestChange[key]) {
+        designationBestChange[key] = n;
+        designationBestId[key] = id;
+      }
     });
 
     // Прежде чем строить сами записи: для карточек с ручным хвостом (Д1-Д4),
@@ -2710,14 +2720,43 @@ function registerGeneratedDocs() {
       return grist.selectedTable.create(recordsToCreate).then(function (result) {
         var results = Array.isArray(result) ? result : [result];
         results.forEach(function (res, i) {
-          state.records.push(Object.assign({ id: res.id }, recordsToCreate[i].fields));
+          var fields = recordsToCreate[i].fields;
+          state.records.push(Object.assign({ id: res.id }, fields));
+          var key = String(fields.DocumentDesignation);
+          var n = parseInt(String(fields.ChangeNumber || '0').replace(/[^0-9]/g, ''), 10);
+          if (!(key in designationBestChange) || n > designationBestChange[key]) {
+            designationBestChange[key] = n;
+            designationBestId[key] = res.id;
+          }
         });
-        state.generatedList = [];
-        rebuildTreeForSelectedProduct();
-        renderGenList();
-        document.getElementById('fNote').value = '';
-        resetForm();
-        btn.disabled = false;
+
+        // ЛУ/УД: id родителя известен только после create(), поэтому
+        // ParentDocument выставляется отдельным update() уже по факту
+        // созданных (и ранее существовавших) записей.
+        var parentUpdates = [];
+        state.generatedList.forEach(function (item, i) {
+          if (WIDGET_ONLY_DOC_TYPE_LABELS.indexOf(item.label) === -1) return;
+          var parentDesig = String(stemForDocDesignation(item.designation, item.label));
+          var parentId = designationBestId[parentDesig];
+          if (parentId && parentId !== results[i].id) {
+            parentUpdates.push({ id: results[i].id, fields: { ParentDocument: parentId } });
+          }
+        });
+
+        var afterUpdate = parentUpdates.length ? grist.selectedTable.update(parentUpdates) : Promise.resolve();
+
+        return afterUpdate.then(function () {
+          parentUpdates.forEach(function (u) {
+            var rec = state.records.filter(function (r) { return r.id === u.id; })[0];
+            if (rec) rec.ParentDocument = u.fields.ParentDocument;
+          });
+          state.generatedList = [];
+          rebuildTreeForSelectedProduct();
+          renderGenList();
+          document.getElementById('fNote').value = '';
+          resetForm();
+          btn.disabled = false;
+        });
       });
     });
   }).catch(function (err) {
