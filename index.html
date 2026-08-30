@@ -521,7 +521,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.66.0</footer>
+<footer class="ver-footer">v0.67.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -1318,7 +1318,7 @@ function stemForDocDesignation(designation, label) {
   var full = String(designation || '');
   var dtEntry = DOC_TYPES.filter(function (d) { return d.label === label; })[0];
   if (!dtEntry) return full;
-  var suffix = ((label === 'ЛУ' || label === 'УД') ? '-' : '') + (dtEntry.code || '');
+  var suffix = ((WIDGET_ONLY_DOC_TYPE_LABELS.indexOf(label) !== -1) ? '-' : '') + (dtEntry.code || '');
   if (suffix && full.length > suffix.length &&
       full.slice(-suffix.length).toLowerCase() === suffix.toLowerCase()) {
     return full.slice(0, full.length - suffix.length);
@@ -2105,7 +2105,7 @@ function generateDocList() {
     var rowUD = state.cellUD[row.id] || {};
     DOC_TYPES.forEach(function (dt) {
       if (rowCells[dt.label]) {
-        var dsg1 = (comp.decimal_number || '') + (dt.label === 'ЛУ' || dt.label === 'УД' ? '-' : '') + dt.code;
+        var dsg1 = (comp.decimal_number || '') + (WIDGET_ONLY_DOC_TYPE_LABELS.indexOf(dt.label) !== -1 ? '-' : '') + dt.code;
         // Т5М — это zip-архив, а не чертёж/документ на листах, у него нет
         // формата листа (А4/А3/...), поэтому формат принудительно "-".
         var defaults1 = dt.label === 'Т5М'
