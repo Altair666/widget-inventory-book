@@ -521,7 +521,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.74.0</footer>
+<footer class="ver-footer">v0.75.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -2754,6 +2754,16 @@ function registerGeneratedDocs() {
         var nameFields = nameFieldsForItem(item, resolvedDocTypeId);
         var ext = item.label === 'Т5М' ? '.zip' : '.pdf';
         var fileName = item.designation.replace(/\s+/g, '') + '_изм' + pad2(changeNumber) + ext;
+        // DocumentDesignation — формульная колонка (см. project_inventory_book_data_model
+        // п.8): сама собирается из NameNode/NameNodeEspd/NameNodeEstd/NameDocType/
+        // Variation/DocTypeCode, уже переданных через nameFields. Пишем текст напрямую
+        // только когда ни одна из трёх Node-ссылок не разрешилась (presetName-путь
+        // повторной регистрации или полностью неопознанный узел) — формула в этом
+        // случае дала бы пустую строку, ровно то же условие, что и NameOverride-фоллбэк
+        // внутри nameFieldsForItem().
+        var designationFields = (!nameFields.NameNode && !nameFields.NameNodeEspd && !nameFields.NameNodeEstd)
+          ? { OverrideDesignation: item.designation }
+          : {};
 
         return {
           fields: Object.assign({
@@ -2761,14 +2771,13 @@ function registerGeneratedDocs() {
             IssueDate: inputValueToDate(dateVal),
             Product: (topComp && topComp.source === 'cmp') ? topComp.rawId : 0,
             ProductName: (topComp && topComp.source === 'cmp') ? topComp.rawId : 0,
-            DocumentDesignation: item.designation,
             DocTypeCode: item.label,
             Sheets: item.sheets,
             Format: format,
             FileName: fileName,
             ChangeNumber: changeNumber,
             Note: reason
-          }, nameFields)
+          }, nameFields, designationFields)
         };
       });
 
