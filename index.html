@@ -521,7 +521,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.78.0</footer>
+<footer class="ver-footer">v0.78.1</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -910,6 +910,9 @@ grist.onOptions(function (options) {
 grist.onRecords(function (records) {
   state.recordsLoaded = true;
   state.records = records;
+  console.log('[inventory-book][DEBUG onRecords] count=' + records.length,
+    'first5 ids=' + JSON.stringify(records.slice(0, 5).map(function (r) { return r.id; })),
+    'last5 ids=' + JSON.stringify(records.slice(-5).map(function (r) { return r.id; })));
   state.recordsByDesignation = buildRecordsByDesignationIndex(records);
   updateConnLabel();
   refreshChangeNumberFloorsFromServer();
@@ -1382,7 +1385,13 @@ function searchExistingDocuments(q, excludeDn) {
     // Label оттуда (NameDocType_dn) как резерв, чтобы поиск существующих
     // документов и preset чекбокса типа продолжали работать как раньше.
     var effectiveTypeLabel = r.DocTypeCode || r.NameDocType_dn || '';
-    var stemComp = findComponentByDecimalNumber(stemForDocDesignation(dn, effectiveTypeLabel));
+    var stem = stemForDocDesignation(dn, effectiveTypeLabel);
+    var stemComp = findComponentByDecimalNumber(stem);
+    console.log('[inventory-book][DEBUG searchExistingDocuments] id=' + r.id,
+      'dn=' + JSON.stringify(dn), 'DocTypeCode=' + JSON.stringify(r.DocTypeCode),
+      'NameDocType=' + JSON.stringify(r.NameDocType), 'NameDocType_dn=' + JSON.stringify(r.NameDocType_dn),
+      'effectiveTypeLabel=' + JSON.stringify(effectiveTypeLabel), 'stem=' + JSON.stringify(stem),
+      'stemComp=' + (stemComp ? ('id=' + stemComp.id) : null));
     var linkId = stemComp ? stemComp.id : productId;
     var pnameComp = state.componentsById[productNameId];
     var pseudo = {
@@ -1499,10 +1508,12 @@ function findTopLevelId(id) {
 // findTopLevelId() поднимает state.selectedProductId до реальной сборки из
 // Components, и режим ошибочно переключился бы на полное дерево состава.
 function selectProduct(id) {
+  var comp = state.componentsById[id];
+  console.log('[inventory-book][DEBUG selectProduct] id=' + JSON.stringify(id),
+    'comp=' + JSON.stringify(comp));
   state.selectedProductId = findTopLevelId(id);
   state.searchedComponentId = id;
   state.genExpanded = false;
-  var comp = state.componentsById[id];
   fProductInput.value = comp ? (comp.decimal_number || '') : ('#' + id);
   fProductDrop.classList.remove('on');
   updateProductClearBtn();
