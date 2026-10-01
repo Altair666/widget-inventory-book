@@ -521,7 +521,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.76.0</footer>
+<footer class="ver-footer">v0.76.1</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -1524,6 +1524,31 @@ function selectProduct(id) {
     // привязка к псевдо-компоненту и текстовый оверрайд как единственный
     // вариант.
     var boundCompId = (comp.source === 'doc' && comp.stemCompId != null) ? comp.stemCompId : id;
+    // ВРЕМЕННАЯ диагностика (0.76.1) для поиска причины, по которой в реальном
+    // браузере stemCompId/boundCompId резолвится иначе, чем в офлайн-симуляции
+    // на тех же серверных данных (см. project_inventory_book_data_model) —
+    // пишем срез состояния именно в момент клика по найденному документу,
+    // через grist.setOption, чтобы прочитать его потом через API без доступа
+    // к консоли браузера пользователя. Убрать после того, как баг найден.
+    if (comp.source === 'doc') {
+      try {
+        var boundComp = state.componentsById[boundCompId];
+        grist.setOption('inventoryBookDebug', JSON.stringify({
+          ts: new Date().toISOString(),
+          clickedId: id,
+          dn: comp.decimal_number,
+          presetLabel: comp.presetLabel,
+          presetDocTypeId: comp.presetDocTypeId,
+          stemCompId: comp.stemCompId,
+          boundCompId: boundCompId,
+          boundCompSource: boundComp ? boundComp.source : null,
+          boundCompDn: boundComp ? boundComp.decimal_number : null,
+          componentsLoaded: state.componentsLoaded,
+          recordsLoaded: state.recordsLoaded,
+          componentsCount: Object.keys(state.componentsById).length
+        }));
+      } catch (e) { /* диагностика не должна ломать основной флоу */ }
+    }
     var newItem = Object.assign({
       compId: boundCompId,
       code: '',
