@@ -521,7 +521,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.78.1</footer>
+<footer class="ver-footer">v0.79.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -882,15 +882,29 @@ function bumpChangeNumberFloor(designation, n) {
 
 // Don't trust onRecords' row-oriented values for this — read the raw
 // column-oriented data instead, same reasoning as notification_numbers.
+//
+// Та же причина заставляет здесь же собирать state.rawDocTypeById: Grist
+// подставляет в onRecords() вместо Ref-значения NameDocType текст его
+// displayCol (NameDocType_dn = $NameDocType.Label) и саму displayCol-колонку
+// отдельным полем не присылает вовсе — r.NameDocType в state.records это
+// всегда ТЕКСТ метки ("ТУ"/"Д1"...), а не числовая ссылка на Doc_types,
+// даже для абсолютно корректных записей. fetchSelectedTable() эту подмену
+// не делает и отдаёт настоящий rowId — только он годится для
+// presetDocTypeId (нужен для точного сохранения варианта хвоста Д1-Д4 при
+// повторной регистрации через поиск, см. searchExistingDocuments).
 function refreshChangeNumberFloorsFromServer() {
   grist.docApi.fetchSelectedTable().then(function (table) {
     var ids = table.id || [];
     var designations = table.DocumentDesignation || [];
     var changeNumbers = table.ChangeNumber || [];
+    var nameDocTypes = table.NameDocType || [];
+    var rawDocTypeById = {};
     ids.forEach(function (id, i) {
       var n = parseInt(String(changeNumbers[i] || '0').replace(/[^0-9]/g, ''), 10);
       bumpChangeNumberFloor(designations[i], n);
+      rawDocTypeById[id] = nameDocTypes[i] || 0;
     });
+    state.rawDocTypeById = rawDocTypeById;
     updateComputedFields();
   }).catch(function (err) { console.error('Не удалось получить сырые данные для расчёта № изменения', err); });
 }
@@ -910,9 +924,6 @@ grist.onOptions(function (options) {
 grist.onRecords(function (records) {
   state.recordsLoaded = true;
   state.records = records;
-  console.log('[inventory-book][DEBUG onRecords] count=' + records.length,
-    'first5 ids=' + JSON.stringify(records.slice(0, 5).map(function (r) { return r.id; })),
-    'last5 ids=' + JSON.stringify(records.slice(-5).map(function (r) { return r.id; })));
   state.recordsByDesignation = buildRecordsByDesignationIndex(records);
   updateConnLabel();
   refreshChangeNumberFloorsFromServer();
@@ -1382,16 +1393,18 @@ function searchExistingDocuments(q, excludeDn) {
     var productNameId = resolveRefId(r.ProductName, 'name');
     // DocTypeCode теперь пуст для большинства записей (тип хранится ссылкой
     // в NameDocType, текстом остаются только модификаторы ЛУ/УД) — берём
-    // Label оттуда (NameDocType_dn) как резерв, чтобы поиск существующих
-    // документов и preset чекбокса типа продолжали работать как раньше.
-    var effectiveTypeLabel = r.DocTypeCode || r.NameDocType_dn || '';
+    // Label оттуда как резерв, чтобы поиск существующих документов и preset
+    // чекбокса типа продолжали работать как раньше.
+    //
+    // ВАЖНО: r.NameDocType здесь — это НЕ числовая ссылка на Doc_types.
+    // grist.onRecords() без явного raw-режима подставляет вместо значения
+    // Ref-колонки текст её displayCol и саму displayCol-колонку
+    // (NameDocType_dn) в payload вообще не присылает (она всегда undefined) —
+    // поэтому r.NameDocType уже и есть нужный нам текст метки ("ТУ"/"Д1"...),
+    // а не rowId. См. project_inventory_book_data_model.
+    var effectiveTypeLabel = r.DocTypeCode || (typeof r.NameDocType === 'string' ? r.NameDocType : '') || '';
     var stem = stemForDocDesignation(dn, effectiveTypeLabel);
     var stemComp = findComponentByDecimalNumber(stem);
-    console.log('[inventory-book][DEBUG searchExistingDocuments] id=' + r.id,
-      'dn=' + JSON.stringify(dn), 'DocTypeCode=' + JSON.stringify(r.DocTypeCode),
-      'NameDocType=' + JSON.stringify(r.NameDocType), 'NameDocType_dn=' + JSON.stringify(r.NameDocType_dn),
-      'effectiveTypeLabel=' + JSON.stringify(effectiveTypeLabel), 'stem=' + JSON.stringify(stem),
-      'stemComp=' + (stemComp ? ('id=' + stemComp.id) : null));
     var linkId = stemComp ? stemComp.id : productId;
     var pnameComp = state.componentsById[productNameId];
     var pseudo = {
@@ -1411,7 +1424,13 @@ function searchExistingDocuments(q, excludeDn) {
       // п.4). Переносим его как есть в NameDocType новой записи, не пытаясь
       // заново подобрать вариант по тексту — так повторная регистрация через
       // поиск гарантированно получает тот же хвост, что и раньше.
-      presetDocTypeId: (typeof r.NameDocType === 'number' && r.NameDocType) ? r.NameDocType : null,
+      //
+      // r.NameDocType из onRecords — это текст Label, а не rowId (см. выше),
+      // поэтому несколько Д1-Д4-вариантов с одинаковым Label им не
+      // различить — настоящий numeric rowId берём из state.rawDocTypeById,
+      // заполняемого отдельным raw-запросом fetchSelectedTable() в
+      // refreshChangeNumberFloorsFromServer().
+      presetDocTypeId: (state.rawDocTypeById && state.rawDocTypeById[r.id]) || null,
       // Реальный узел (Components/ESPD/ESTD), которому принадлежит найденный
       // документ — если он есть, selectProduct() привязывает новую запись к
       // НЕМУ (а не к этому псевдо-компоненту), чтобы nameFieldsForItem() писал
@@ -1509,8 +1528,6 @@ function findTopLevelId(id) {
 // Components, и режим ошибочно переключился бы на полное дерево состава.
 function selectProduct(id) {
   var comp = state.componentsById[id];
-  console.log('[inventory-book][DEBUG selectProduct] id=' + JSON.stringify(id),
-    'comp=' + JSON.stringify(comp));
   state.selectedProductId = findTopLevelId(id);
   state.searchedComponentId = id;
   state.genExpanded = false;
