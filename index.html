@@ -521,7 +521,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.75.0</footer>
+<footer class="ver-footer">v0.76.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -1395,7 +1395,21 @@ function searchExistingDocuments(q, excludeDn) {
       org_prefix: '',
       serial: '',
       presetLabel: effectiveTypeLabel,
-      presetName: r.Name || ''
+      presetName: r.Name || '',
+      // Точный вариант Doc_types предыдущей регистрации (важно для Д1-Д4 и
+      // прочих needsTail-типов — у них несколько строк с одинаковым Label,
+      // различающихся FullName/хвостом, см. project_inventory_book_data_model
+      // п.4). Переносим его как есть в NameDocType новой записи, не пытаясь
+      // заново подобрать вариант по тексту — так повторная регистрация через
+      // поиск гарантированно получает тот же хвост, что и раньше.
+      presetDocTypeId: (typeof r.NameDocType === 'number' && r.NameDocType) ? r.NameDocType : null,
+      // Реальный узел (Components/ESPD/ESTD), которому принадлежит найденный
+      // документ — если он есть, selectProduct() привязывает новую запись к
+      // НЕМУ (а не к этому псевдо-компоненту), чтобы nameFieldsForItem() писал
+      // настоящую Ref-ссылку вместо текстового NameOverride. null — только
+      // когда сама деталь/сборка уже не существует в текущей номенклатуре
+      // (устаревший узел) и переносить ссылку действительно не на что.
+      stemCompId: stemComp ? stemComp.id : null
     };
     // Регистрируем в общей карте компонентов, чтобы selectProduct(id) и
     // findTopLevelId(id) могли найти этот псевдо-компонент по id так же,
@@ -1500,16 +1514,30 @@ function selectProduct(id) {
     state.cellUD = {};
     state.pendingExecRowId = null;
     renderTree();
+    // Для документа, найденного через searchExistingDocuments (comp.source
+    // === 'doc'), compId должен указывать на НАСТОЯЩИЙ узел (comp.stemCompId:
+    // Components/ESPD/ESTD), а не на сам псевдо-компонент 'doc:<обозначение>'
+    // — иначе nameFieldsForItem() не находит ни одной из трёх Node-ссылок и
+    // вынужденно пишет NameOverride текстом вместо реальной Ref-ссылки (см.
+    // nameFieldsForItem). Если stemCompId нет (деталь/сборка уже не
+    // существует в текущей номенклатуре), остаётся старое поведение —
+    // привязка к псевдо-компоненту и текстовый оверрайд как единственный
+    // вариант.
+    var boundCompId = (comp.source === 'doc' && comp.stemCompId != null) ? comp.stemCompId : id;
     var newItem = Object.assign({
-      compId: id,
+      compId: boundCompId,
       code: '',
       label: comp.source === 'doc' ? (comp.presetLabel || '') : '',
       designation: comp.decimal_number || ''
     }, defaultsForNewVersion(comp.decimal_number || ''));
     // 'doc:' — документ найден по уже существующему обозначению (см.
-    // searchExistingDocuments), а не по строке номенклатуры: готовое имя
-    // берём из его прошлой регистрации, а не пересобираем из top/name.
+    // searchExistingDocuments): presetName запоминаем как резервное имя на
+    // случай, если boundCompId не настоящий узел (узел уже не существует в
+    // номенклатуре) — тогда nameFieldsForItem() использует этот текст вместо
+    // пересборки имени из top/name. Если узел нашёлся, presetName остаётся
+    // неиспользованным и имя пересчитывает формула Name на стороне Grist.
     if (comp.source === 'doc' && comp.presetName) newItem.presetName = comp.presetName;
+    if (comp.source === 'doc' && comp.presetDocTypeId) newItem.presetDocTypeId = comp.presetDocTypeId;
     state.generatedList = [newItem];
   } else {
     state.generatedList = [];
@@ -2239,13 +2267,12 @@ function nameForItem(item) {
 // переименована в Variation и хранит номер исполнения).
 function nameFieldsForItem(item, resolvedDocTypeId) {
   var empty = { NameNode: 0, NameNodeEspd: 0, NameNodeEstd: 0, NameDocType: 0, Variation: '', NameOverride: '' };
-  if (item.presetName != null) {
-    // Повторная регистрация уже известного документа (найден по обозначению
-    // через searchExistingDocuments) — единичное исключение, текст переносится
-    // как есть (переиспользование реальной ссылки прежней версии — отдельная,
-    // ещё не согласованная доработка).
-    return Object.assign({}, empty, { NameOverride: item.presetName });
-  }
+  // Повторная регистрация уже известного документа (найден по обозначению
+  // через searchExistingDocuments) — item.compId в этом случае уже указывает
+  // на настоящий узел (comp.stemCompId, см. selectProduct()), если он всё ещё
+  // существует в номенклатуре, поэтому ref-ветки ниже отрабатывают как для
+  // обычной карточки. item.presetName используется только ниже, как резерв
+  // на случай, если узел не нашёлся вообще (устаревшая деталь/сборка).
   var comp = state.componentsById[item.compId];
   // Исполнение (comp.execValue) — заполняется только у псевдокомпонентов,
   // созданных через addExecutionRow(); дописывается формулой Name в самом
@@ -2264,7 +2291,12 @@ function nameFieldsForItem(item, resolvedDocTypeId) {
   // суффикс через Doc_types.lookupOne(Code=...).
   var hostLabel = item.hostLabel || item.label;
   var dtEntry = DOC_TYPES.filter(function (d) { return d.label === hostLabel; })[0];
-  var docTypeId = resolvedDocTypeId || ((dtEntry && dtEntry.id) ? dtEntry.id : 0);
+  // item.presetDocTypeId (повторная регистрация через поиск, см. выше) имеет
+  // приоритет над базовой записью метки — для needsTail-типов (Д1-Д4 и т.п.)
+  // с несколькими вариантами одного Label это единственный способ попасть
+  // именно в тот вариант, что был в прошлой регистрации, а не в первый
+  // попавшийся с тем же текстом Label.
+  var docTypeId = resolvedDocTypeId || item.presetDocTypeId || ((dtEntry && dtEntry.id) ? dtEntry.id : 0);
   var fields;
   if (comp && comp.source === 'esp') {
     fields = { NameNodeEspd: comp.rawId, Variation: item.nameOverride == null ? execVal : '' };
@@ -2282,9 +2314,11 @@ function nameFieldsForItem(item, resolvedDocTypeId) {
     fields.NameOverride = item.nameOverride;
   } else if (!fields.NameNode && !fields.NameNodeEspd && !fields.NameNodeEstd) {
     // Узел не найден вообще ни в одной из трёх таблиц — нет ссылки, наименование
-    // остаётся текстом (единичное исключение). nameForItem() уже сам дописывает
-    // исполнение в текст в этом случае.
-    fields.NameOverride = nameForItem(item);
+    // остаётся текстом (единичное исключение). Для документа, найденного через
+    // searchExistingDocuments, у которого узел с тех пор пропал из номенклатуры,
+    // используем готовое имя из прошлой регистрации (item.presetName); иначе
+    // nameForItem() сам дописывает исполнение в текст.
+    fields.NameOverride = item.presetName != null ? item.presetName : nameForItem(item);
   }
   return Object.assign({}, empty, fields);
 }
