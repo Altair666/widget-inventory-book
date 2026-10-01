@@ -521,7 +521,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.76.1</footer>
+<footer class="ver-footer">v0.77.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -1514,55 +1514,24 @@ function selectProduct(id) {
     state.cellUD = {};
     state.pendingExecRowId = null;
     renderTree();
-    // Для документа, найденного через searchExistingDocuments (comp.source
-    // === 'doc'), compId должен указывать на НАСТОЯЩИЙ узел (comp.stemCompId:
-    // Components/ESPD/ESTD), а не на сам псевдо-компонент 'doc:<обозначение>'
-    // — иначе nameFieldsForItem() не находит ни одной из трёх Node-ссылок и
-    // вынужденно пишет NameOverride текстом вместо реальной Ref-ссылки (см.
-    // nameFieldsForItem). Если stemCompId нет (деталь/сборка уже не
-    // существует в текущей номенклатуре), остаётся старое поведение —
-    // привязка к псевдо-компоненту и текстовый оверрайд как единственный
-    // вариант.
-    var boundCompId = (comp.source === 'doc' && comp.stemCompId != null) ? comp.stemCompId : id;
-    // ВРЕМЕННАЯ диагностика (0.76.1) для поиска причины, по которой в реальном
-    // браузере stemCompId/boundCompId резолвится иначе, чем в офлайн-симуляции
-    // на тех же серверных данных (см. project_inventory_book_data_model) —
-    // пишем срез состояния именно в момент клика по найденному документу,
-    // через grist.setOption, чтобы прочитать его потом через API без доступа
-    // к консоли браузера пользователя. Убрать после того, как баг найден.
-    if (comp.source === 'doc') {
-      try {
-        var boundComp = state.componentsById[boundCompId];
-        grist.setOption('inventoryBookDebug', JSON.stringify({
-          ts: new Date().toISOString(),
-          clickedId: id,
-          dn: comp.decimal_number,
-          presetLabel: comp.presetLabel,
-          presetDocTypeId: comp.presetDocTypeId,
-          stemCompId: comp.stemCompId,
-          boundCompId: boundCompId,
-          boundCompSource: boundComp ? boundComp.source : null,
-          boundCompDn: boundComp ? boundComp.decimal_number : null,
-          componentsLoaded: state.componentsLoaded,
-          recordsLoaded: state.recordsLoaded,
-          componentsCount: Object.keys(state.componentsById).length
-        }));
-      } catch (e) { /* диагностика не должна ломать основной флоу */ }
-    }
     var newItem = Object.assign({
-      compId: boundCompId,
+      compId: id,
       code: '',
       label: comp.source === 'doc' ? (comp.presetLabel || '') : '',
       designation: comp.decimal_number || ''
     }, defaultsForNewVersion(comp.decimal_number || ''));
     // 'doc:' — документ найден по уже существующему обозначению (см.
-    // searchExistingDocuments): presetName запоминаем как резервное имя на
-    // случай, если boundCompId не настоящий узел (узел уже не существует в
-    // номенклатуре) — тогда nameFieldsForItem() использует этот текст вместо
-    // пересборки имени из top/name. Если узел нашёлся, presetName остаётся
-    // неиспользованным и имя пересчитывает формула Name на стороне Grist.
+    // searchExistingDocuments): compId намеренно остаётся псевдо-id, а НЕ
+    // настоящим узлом — от этого зависят standalone-режим (сравнение
+    // comp.source !== 'cmp' выше и в updateBomPanelVisibility) и вид карточки
+    // (isHybridTail в renderGenList и т.п.); попытка подменить его на
+    // comp.stemCompId в 0.76.0 сломала единичное добавление (открывался
+    // полный состав изделия). Для правильной Ref-ссылки при регистрации
+    // служит отдельное поле stemCompId — его использует только
+    // nameFieldsForItem(), сам compId при этом не трогая.
     if (comp.source === 'doc' && comp.presetName) newItem.presetName = comp.presetName;
     if (comp.source === 'doc' && comp.presetDocTypeId) newItem.presetDocTypeId = comp.presetDocTypeId;
+    if (comp.source === 'doc' && comp.stemCompId != null) newItem.stemCompId = comp.stemCompId;
     state.generatedList = [newItem];
   } else {
     state.generatedList = [];
@@ -2293,12 +2262,15 @@ function nameForItem(item) {
 function nameFieldsForItem(item, resolvedDocTypeId) {
   var empty = { NameNode: 0, NameNodeEspd: 0, NameNodeEstd: 0, NameDocType: 0, Variation: '', NameOverride: '' };
   // Повторная регистрация уже известного документа (найден по обозначению
-  // через searchExistingDocuments) — item.compId в этом случае уже указывает
-  // на настоящий узел (comp.stemCompId, см. selectProduct()), если он всё ещё
-  // существует в номенклатуре, поэтому ref-ветки ниже отрабатывают как для
-  // обычной карточки. item.presetName используется только ниже, как резерв
-  // на случай, если узел не нашёлся вообще (устаревшая деталь/сборка).
-  var comp = state.componentsById[item.compId];
+  // через searchExistingDocuments) — item.compId здесь НАРОЧНО остаётся
+  // псевдо-id (см. selectProduct()): от него зависит UI (standalone-режим,
+  // вид карточки), трогать его нельзя. Для ref-полей вместо этого берём
+  // item.stemCompId — настоящий узел (Components/ESPD/ESTD), которому
+  // принадлежит найденный документ, если он всё ещё существует в
+  // номенклатуре. item.presetName используется ниже как резерв на случай,
+  // если узел не нашёлся вообще (устаревшая деталь/сборка).
+  var nodeCompId = (item.stemCompId != null) ? item.stemCompId : item.compId;
+  var comp = state.componentsById[nodeCompId];
   // Исполнение (comp.execValue) — заполняется только у псевдокомпонентов,
   // созданных через addExecutionRow(); дописывается формулой Name в самом
   // конце наименования вне зависимости от того, какая из трёх Node-ссылок
