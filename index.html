@@ -521,7 +521,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.79.0</footer>
+<footer class="ver-footer">v0.80.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -882,31 +882,45 @@ function bumpChangeNumberFloor(designation, n) {
 
 // Don't trust onRecords' row-oriented values for this — read the raw
 // column-oriented data instead, same reasoning as notification_numbers.
-//
-// Та же причина заставляет здесь же собирать state.rawDocTypeById: Grist
-// подставляет в onRecords() вместо Ref-значения NameDocType текст его
-// displayCol (NameDocType_dn = $NameDocType.Label) и саму displayCol-колонку
-// отдельным полем не присылает вовсе — r.NameDocType в state.records это
-// всегда ТЕКСТ метки ("ТУ"/"Д1"...), а не числовая ссылка на Doc_types,
-// даже для абсолютно корректных записей. fetchSelectedTable() эту подмену
-// не делает и отдаёт настоящий rowId — только он годится для
-// presetDocTypeId (нужен для точного сохранения варианта хвоста Д1-Д4 при
-// повторной регистрации через поиск, см. searchExistingDocuments).
 function refreshChangeNumberFloorsFromServer() {
   grist.docApi.fetchSelectedTable().then(function (table) {
     var ids = table.id || [];
     var designations = table.DocumentDesignation || [];
     var changeNumbers = table.ChangeNumber || [];
-    var nameDocTypes = table.NameDocType || [];
-    var rawDocTypeById = {};
     ids.forEach(function (id, i) {
       var n = parseInt(String(changeNumbers[i] || '0').replace(/[^0-9]/g, ''), 10);
       bumpChangeNumberFloor(designations[i], n);
-      rawDocTypeById[id] = nameDocTypes[i] || 0;
     });
-    state.rawDocTypeById = rawDocTypeById;
     updateComputedFields();
   }).catch(function (err) { console.error('Не удалось получить сырые данные для расчёта № изменения', err); });
+}
+
+// ВАЖНО: fetchSelectedTable() для Ref-колонок с displayCol возвращает ТО ЖЕ
+// САМОЕ текстовое значение SHOW COLUMN, что и grist.onRecords() — она НЕ
+// обходит подмену (проверено: подмена относится к Reference-колонкам
+// конкретно, не зависит от способа чтения через fetchSelectedTable/
+// onRecords). Единственный способ получить настоящий numeric rowId —
+// grist.docApi.fetchTable(tableId) (полная, НЕ отфильтрованная по select-by
+// таблица), который, в отличие от fetchSelectedTable, отдаёт для ссылок сами
+// rowId, а не их отображаемый текст. tableId своей же таблицы узнаём через
+// grist.selectedTable.getTableId().
+// state.rawDocTypeById: id записи Inventory_book -> настоящий numeric rowId
+// Doc_types (или 0). Нужен для presetDocTypeId при повторной регистрации
+// через поиск (см. searchExistingDocuments) — там несколько вариантов Д1-Д4
+// имеют одинаковый Label, различить их можно только по rowId.
+function refreshRawDocTypeRefs() {
+  if (!grist.selectedTable || typeof grist.selectedTable.getTableId !== 'function') return;
+  grist.selectedTable.getTableId().then(function (tableId) {
+    return grist.docApi.fetchTable(tableId);
+  }).then(function (table) {
+    var ids = table.id || [];
+    var nameDocTypes = table.NameDocType || [];
+    var map = {};
+    ids.forEach(function (id, i) {
+      map[id] = (typeof nameDocTypes[i] === 'number') ? nameDocTypes[i] : 0;
+    });
+    state.rawDocTypeById = map;
+  }).catch(function (err) { console.error('Не удалось получить сырые ссылки NameDocType', err); });
 }
 
 // ---------- Grist wiring ----------
@@ -927,6 +941,7 @@ grist.onRecords(function (records) {
   state.recordsByDesignation = buildRecordsByDesignationIndex(records);
   updateConnLabel();
   refreshChangeNumberFloorsFromServer();
+  refreshRawDocTypeRefs();
   updateComputedFields();
   renderRegYearBar();
   renderRegistry();
@@ -1428,9 +1443,8 @@ function searchExistingDocuments(q, excludeDn) {
       // r.NameDocType из onRecords — это текст Label, а не rowId (см. выше),
       // поэтому несколько Д1-Д4-вариантов с одинаковым Label им не
       // различить — настоящий numeric rowId берём из state.rawDocTypeById,
-      // заполняемого отдельным raw-запросом fetchSelectedTable() в
-      // refreshChangeNumberFloorsFromServer().
-      presetDocTypeId: (state.rawDocTypeById && state.rawDocTypeById[r.id]) || null,
+      // заполняемого отдельным raw-запросом fetchTable() в refreshRawDocTypeRefs().
+      presetDocTypeId: (state.rawDocTypeById && typeof state.rawDocTypeById[r.id] === 'number' && state.rawDocTypeById[r.id]) || null,
       // Реальный узел (Components/ESPD/ESTD), которому принадлежит найденный
       // документ — если он есть, selectProduct() привязывает новую запись к
       // НЕМУ (а не к этому псевдо-компоненту), чтобы nameFieldsForItem() писал
@@ -2322,6 +2336,13 @@ function nameFieldsForItem(item, resolvedDocTypeId) {
   // именно в тот вариант, что был в прошлой регистрации, а не в первый
   // попавшийся с тем же текстом Label.
   var docTypeId = resolvedDocTypeId || item.presetDocTypeId || ((dtEntry && dtEntry.id) ? dtEntry.id : 0);
+  // Защита от повторения бага 0.79.0: NameDocType — Ref-колонка, запись в
+  // неё текста вместо rowId превращает значение в AltText и ломает все
+  // зависимые формульные колонки (Name, DocumentDesignation, NameDocType_dn)
+  // на самой записи. Что бы ни оказалось в docTypeId (ошибка резолюции
+  // presetDocTypeId/dtEntry выше, баг в другом месте и т.п.) — сюда должно
+  // попасть только число, иначе лучше оставить ссылку пустой (0).
+  if (typeof docTypeId !== 'number') docTypeId = 0;
   var fields;
   if (comp && comp.source === 'esp') {
     fields = { NameNodeEspd: comp.rawId, Variation: item.nameOverride == null ? execVal : '' };
