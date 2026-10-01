@@ -521,7 +521,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.80.0</footer>
+<footer class="ver-footer">v0.81.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -1342,16 +1342,33 @@ var fProductDrop = document.getElementById('fProductDrop');
 // либо «-ЛУ»/«-УД» для сопутствующих листов), чтобы получить decimal_number
 // самой детали/сборки, которой принадлежит документ — обратная операция к
 // сборке designation в generateDocList().
-function stemForDocDesignation(designation, label) {
+// hostLabel (опционально) — метка документа-носителя для сопутствующего
+// листа ЛУ/УД (напр. "ТУ" для «...009ТУ-ЛУ»). Без неё из "009ТУ-ЛУ"
+// отрезается только "-ЛУ", и остаётся "009ТУ" — это НЕ decimal_number
+// детали/сборки (там "009"), findComponentByDecimalNumber() ничего не
+// находит, и повторная регистрация версии такого документа через поиск
+// проваливается в NameOverride-текст вместо настоящей Ref-ссылки на узел
+// (баг, не связанный с регрессией v0.79.0 — не затрагивает уже
+// сохранённые записи, только попытку их повторно найти/перелинковать).
+function stemForDocDesignation(designation, label, hostLabel) {
   var full = String(designation || '');
   var dtEntry = DOC_TYPES.filter(function (d) { return d.label === label; })[0];
   if (!dtEntry) return full;
   var suffix = ((WIDGET_ONLY_DOC_TYPE_LABELS.indexOf(label) !== -1) ? '-' : '') + (dtEntry.code || '');
-  if (suffix && full.length > suffix.length &&
-      full.slice(-suffix.length).toLowerCase() === suffix.toLowerCase()) {
-    return full.slice(0, full.length - suffix.length);
+  var result = full;
+  if (suffix && result.length > suffix.length &&
+      result.slice(-suffix.length).toLowerCase() === suffix.toLowerCase()) {
+    result = result.slice(0, result.length - suffix.length);
   }
-  return full;
+  if (hostLabel) {
+    var hostEntry = DOC_TYPES.filter(function (d) { return d.label === hostLabel; })[0];
+    var hostCode = hostEntry ? (hostEntry.code || '') : '';
+    if (hostCode && result.length > hostCode.length &&
+        result.slice(-hostCode.length).toLowerCase() === hostCode.toLowerCase()) {
+      result = result.slice(0, result.length - hostCode.length);
+    }
+  }
+  return result;
 }
 
 // Grist-плагин отдаёт для Product/ProductName либо числовой id ссылки (как
@@ -1417,8 +1434,17 @@ function searchExistingDocuments(q, excludeDn) {
     // (NameDocType_dn) в payload вообще не присылает (она всегда undefined) —
     // поэтому r.NameDocType уже и есть нужный нам текст метки ("ТУ"/"Д1"...),
     // а не rowId. См. project_inventory_book_data_model.
-    var effectiveTypeLabel = r.DocTypeCode || (typeof r.NameDocType === 'string' ? r.NameDocType : '') || '';
-    var stem = stemForDocDesignation(dn, effectiveTypeLabel);
+    var docTypeRefText = (typeof r.NameDocType === 'string') ? r.NameDocType : '';
+    var effectiveTypeLabel = r.DocTypeCode || docTypeRefText || '';
+    // Для сопутствующего листа ЛУ/УД (DocTypeCode непуст) r.NameDocType —
+    // это НЕ его собственный тип, а подставленный displayCol-текст МЕТКИ
+    // НОСИТЕЛЯ (NameDocType-ссылка на такой записи указывает на Doc_types-
+    // строку документа-хозяина, см. nameFieldsForItem) — "ТУ" для
+    // "...009ТУ-ЛУ". Нужен, чтобы stemForDocDesignation() отрезал от
+    // designation код носителя вместе с суффиксом "-ЛУ"/"-УД".
+    var isCompanionType = WIDGET_ONLY_DOC_TYPE_LABELS.indexOf(effectiveTypeLabel) !== -1;
+    var hostLabelForDoc = isCompanionType ? docTypeRefText : '';
+    var stem = stemForDocDesignation(dn, effectiveTypeLabel, hostLabelForDoc);
     var stemComp = findComponentByDecimalNumber(stem);
     var linkId = stemComp ? stemComp.id : productId;
     var pnameComp = state.componentsById[productNameId];
@@ -1451,7 +1477,12 @@ function searchExistingDocuments(q, excludeDn) {
       // настоящую Ref-ссылку вместо текстового NameOverride. null — только
       // когда сама деталь/сборка уже не существует в текущей номенклатуре
       // (устаревший узел) и переносить ссылку действительно не на что.
-      stemCompId: stemComp ? stemComp.id : null
+      stemCompId: stemComp ? stemComp.id : null,
+      // Метка документа-носителя для сопутствующего листа ЛУ/УД (напр. "ТУ")
+      // — selectProduct() переносит её в newItem.hostLabel, от которой
+      // nameFieldsForItem()/nameForItem() резолвят настоящий Doc_types-тип и
+      // суффикс имени. Для обычных (не ЛУ/УД) документов остаётся ''.
+      hostLabel: hostLabelForDoc || undefined
     };
     // Регистрируем в общей карте компонентов, чтобы selectProduct(id) и
     // findTopLevelId(id) могли найти этот псевдо-компонент по id так же,
@@ -1574,6 +1605,7 @@ function selectProduct(id) {
     if (comp.source === 'doc' && comp.presetName) newItem.presetName = comp.presetName;
     if (comp.source === 'doc' && comp.presetDocTypeId) newItem.presetDocTypeId = comp.presetDocTypeId;
     if (comp.source === 'doc' && comp.stemCompId != null) newItem.stemCompId = comp.stemCompId;
+    if (comp.source === 'doc' && comp.hostLabel) newItem.hostLabel = comp.hostLabel;
     state.generatedList = [newItem];
   } else {
     state.generatedList = [];
