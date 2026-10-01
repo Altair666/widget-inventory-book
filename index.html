@@ -521,7 +521,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.77.0</footer>
+<footer class="ver-footer">v0.78.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -3266,7 +3266,9 @@ function editableRow(r) {
       fields.ProductName = chosenProduct.rawId;
     }
     grist.selectedTable.update({ id: r.id, fields: fields }).then(function () {
+      Object.assign(r, fields);
       editingId = null;
+      renderRegistry();
     }).catch(showError);
   });
   var cancelBtn = iconButton('cell-edit-btn cancel', xSvg(), 'Отмена');
