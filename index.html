@@ -521,7 +521,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.81.0</footer>
+<footer class="ver-footer">v0.82.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -2358,8 +2358,8 @@ function nameFieldsForItem(item, resolvedDocTypeId) {
   // лист к КОНКРЕТНОМУ документу-носителю (тот же узел, тип — hostLabel).
   // Ссылки на узел/тип пишутся от носителя. Собственный тип ЛУ/УД отдельным
   // полем не хранится — уже есть DocTypeCode (пишется ниже, в вызывающем
-  // коде, как item.label), формула Name сама смотрит на него и дописывает
-  // суффикс через Doc_types.lookupOne(Code=...).
+  // коде, только когда item.label — 'ЛУ'/'УД', иначе пусто), формула Name
+  // сама смотрит на него и хардкодом дописывает суффикс.
   var hostLabel = item.hostLabel || item.label;
   var dtEntry = DOC_TYPES.filter(function (d) { return d.label === hostLabel; })[0];
   // item.presetDocTypeId (повторная регистрация через поиск, см. выше) имеет
@@ -2883,7 +2883,7 @@ function registerGeneratedDocs() {
             IssueDate: inputValueToDate(dateVal),
             Product: (topComp && topComp.source === 'cmp') ? topComp.rawId : 0,
             ProductName: (topComp && topComp.source === 'cmp') ? topComp.rawId : 0,
-            DocTypeCode: item.label,
+            DocTypeCode: WIDGET_ONLY_DOC_TYPE_LABELS.indexOf(item.label) !== -1 ? item.label : '',
             Sheets: item.sheets,
             Format: format,
             FileName: fileName,
