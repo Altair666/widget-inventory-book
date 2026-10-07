@@ -522,7 +522,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.84.0</footer>
+<footer class="ver-footer">v0.85.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -3107,6 +3107,39 @@ var regBody = document.getElementById('regBody');
 var regCount = document.getElementById('regCount');
 var regFilterInput = document.getElementById('regFilterInput');
 var editingId = null;
+
+// Chromium оставляет "призрак" текста (stale растровый кеш) на границе
+// sticky-шапки .reg-table th, когда скролл .main останавливается на
+// позиции, где обёрнутая (многострочная) строка таблицы наполовину
+// скрыта под шапкой — это баг рендеринга браузера, а не CSS-проблема
+// (DOM/layout в этом месте корректны, проверено через elementFromPoint).
+// CSS scroll-snap здесь не подходит: #main — единственный скролл-контейнер
+// для всей страницы (включая форму регистрации над реестром), и snap
+// по строкам таблицы перехватывал бы обычный скролл формы рывками в
+// сторону таблицы. Поэтому вместо CSS — точечная JS-коррекция: после
+// остановки скролла проверяем, не "торчит" ли строка из-под шапки, и
+// если да — слегка доскролливаем именно на эту величину.
+(function () {
+  var mainEl = document.getElementById('main');
+  var regSnapTimer = null;
+  mainEl.addEventListener('scroll', function () {
+    clearTimeout(regSnapTimer);
+    regSnapTimer = setTimeout(snapRegistryRowIfStraddling, 120);
+  });
+  function snapRegistryRowIfStraddling() {
+    var th = regBody.querySelector('.reg-table th');
+    var tbody = regBody.querySelector('.reg-table tbody');
+    if (!th || !tbody || !tbody.children.length) return;
+    var headerBottom = th.getBoundingClientRect().bottom;
+    for (var i = 0; i < tbody.children.length; i++) {
+      var r = tbody.children[i].getBoundingClientRect();
+      if (r.top < headerBottom - 0.5 && r.bottom > headerBottom + 0.5) {
+        mainEl.scrollTop += Math.round(r.top - headerBottom);
+        return;
+      }
+    }
+  }
+})();
 var expandedNoteIds = {}; // id записи -> true, если примечание (>4 строк) развёрнуто пользователем
 
 function productLabelForRecord(r) {
