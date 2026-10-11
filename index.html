@@ -119,11 +119,10 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .reg-sheets{white-space:nowrap}
 .reg-format{white-space:nowrap}
 .reg-name{text-align:left;white-space:normal;word-break:break-word;overflow-wrap:anywhere}
-.reg-card{white-space:nowrap}
-.reg-dl,.reg-dl-head{white-space:nowrap;text-align:center!important;padding-left:0!important;padding-right:0!important}
+.reg-card,.reg-card-head,.reg-dl,.reg-dl-head{white-space:nowrap;text-align:center!important;padding-left:0!important;padding-right:0!important}
 .reg-dl-head{color:var(--red)}
 .reg-dl-head svg{display:block;margin:0 auto}
-.reg-dl-wrap{display:flex;align-items:center;justify-content:center;width:100%}
+.reg-dl-wrap,.reg-card-wrap{display:flex;align-items:center;justify-content:center;width:100%}
 .dl-btn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border:1px solid transparent;border-radius:4pt;background:transparent;color:var(--red);cursor:pointer;flex-shrink:0;transition:all .1s;padding:0}
 .dl-btn:hover{background:var(--red-bg);color:var(--red);border-color:var(--red-brd)}
 .dl-btn:disabled{color:var(--tx3);opacity:.6;cursor:not-allowed;background:transparent;border-color:transparent}
@@ -423,7 +422,10 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .card-upload-row{display:flex;align-items:center;gap:8px}
 .card-upload-row input[type=file]{flex:1;font-size:11px}
 .card-hash-row{display:flex;gap:10px}
-.card-hash-row .form-group{flex:1}
+.card-hash-row .form-group.hash-md5{flex:1 1 auto;min-width:0}
+.card-hash-row .form-group.hash-crc{flex:0 0 110px}
+.hash-field-row{display:flex;align-items:center;gap:4px}
+.hash-field-row .form-input{flex:1;min-width:0}
 .card-upload-hint{font-size:10px;color:var(--tx3)}
 .card-upload-status{font-size:11px;color:var(--grn)}
 
@@ -546,7 +548,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.86.0</footer>
+<footer class="ver-footer">v0.87.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -3216,14 +3218,15 @@ function renderRegistry() {
   table.className = 'reg-table';
   table.innerHTML =
     '<colgroup>' +
-    '<col style="width:30px"><col style="width:7%"><col style="width:7%"><col style="width:4%"><col style="width:10%"><col style="width:11%">' +
-    '<col style="width:4%"><col style="width:5%"><col style="width:14%"><col style="width:13%">' +
-    '<col style="width:20%"><col style="width:5%">' +
+    '<col style="width:30px"><col style="width:30px"><col style="width:7%"><col style="width:7%"><col style="width:4%"><col style="width:10%"><col style="width:11%">' +
+    '<col style="width:4%"><col style="width:5%"><col style="width:20%">' +
+    '<col style="width:27%"><col style="width:5%">' +
     '</colgroup>' +
     '<thead><tr>' +
     '<th class="reg-dl-head" title="Скачать файл">' + downloadSvg() + '</th>' +
+    '<th class="reg-card-head" title="Карточка документа">КРТ</th>' +
     '<th>Инв. номер</th><th>Дата</th><th>№ изм.</th><th>Изделие</th><th style="text-align:left">Обозначение</th>' +
-    '<th>Листов</th><th>Формат</th><th>Наименование</th><th>Карточка док.</th>' +
+    '<th>Листов</th><th>Формат</th><th>Наименование</th>' +
     '<th>Примечание</th><th></th>' +
     '</tr></thead><tbody></tbody>';
   var tbody = table.querySelector('tbody');
@@ -3234,20 +3237,20 @@ function renderRegistry() {
       tr.appendChild(editableRow(r));
     } else {
       tr.innerHTML =
-        '<td class="reg-dl"></td><td class="reg-dn"></td><td class="reg-date"></td><td class="reg-chg"></td><td></td><td class="reg-mono" style="text-align:left"></td>' +
-        '<td class="reg-sheets"></td><td class="reg-format"></td><td class="reg-name"></td><td class="reg-card"></td>' +
+        '<td class="reg-dl"></td><td class="reg-card"></td><td class="reg-dn"></td><td class="reg-date"></td><td class="reg-chg"></td><td></td><td class="reg-mono" style="text-align:left"></td>' +
+        '<td class="reg-sheets"></td><td class="reg-format"></td><td class="reg-name"></td>' +
         '<td class="reg-reason"></td><td class="reg-actions"></td>';
       var c = tr.children;
       c[0].appendChild(buildDownloadCellContent(r));
-      c[1].textContent = r.InventoryNumber || '';
-      c[2].textContent = formatDate(r.IssueDate);
-      c[3].textContent = (r.ChangeNumber != null) ? r.ChangeNumber : '';
-      c[4].textContent = productLabelForRecord(r);
-      c[5].textContent = r.DocumentDesignation || '';
-      c[6].textContent = r.Sheets || '';
-      c[7].textContent = r.Format || '';
-      c[8].textContent = r.Name || '';
-      c[9].appendChild(buildCardBtn(r));
+      c[1].appendChild(buildCardCellContent(r));
+      c[2].textContent = r.InventoryNumber || '';
+      c[3].textContent = formatDate(r.IssueDate);
+      c[4].textContent = (r.ChangeNumber != null) ? r.ChangeNumber : '';
+      c[5].textContent = productLabelForRecord(r);
+      c[6].textContent = r.DocumentDesignation || '';
+      c[7].textContent = r.Sheets || '';
+      c[8].textContent = r.Format || '';
+      c[9].textContent = r.Name || '';
       c[10].appendChild(buildNoteCell(r));
       var actions = c[11];
       var actionsWrap = document.createElement('span');
@@ -3271,6 +3274,11 @@ function editableRow(r) {
   tdDl.className = 'reg-dl';
   tdDl.appendChild(buildDownloadCellContent(r));
   frag.appendChild(tdDl);
+
+  var tdCard = document.createElement('td');
+  tdCard.className = 'reg-card';
+  tdCard.appendChild(buildCardCellContent(r));
+  frag.appendChild(tdCard);
 
   var tdNum = document.createElement('td');
   tdNum.className = 'reg-dn'; tdNum.textContent = r.InventoryNumber || '';
@@ -3366,11 +3374,6 @@ function editableRow(r) {
   tdName.textContent = r.Name || '';
   frag.appendChild(tdName);
 
-  var tdCard = document.createElement('td');
-  tdCard.className = 'reg-card';
-  tdCard.appendChild(buildCardBtn(r));
-  frag.appendChild(tdCard);
-
   var tdNote = document.createElement('td');
   tdNote.className = 'reg-reason';
   var taNote = document.createElement('textarea');
@@ -3425,6 +3428,19 @@ function gripSvg() { return '<svg width="10" height="14" viewBox="0 0 10 14" fil
 function cardIdSvg() { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="8" cy="12" r="2"/><path d="M14 10h6M14 14h4"/></svg>'; }
 function downloadSvg() { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M4 21h16"/></svg>'; }
 function pdfSvg() { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 11h3M9 14h6M9 17h6"/></svg>'; }
+function copySvg() { return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'; }
+
+function copyToClipboard(text, btn) {
+  if (!text) return;
+  var restore = btn.title;
+  var ok = function () { btn.title = 'Скопировано!'; setTimeout(function () { btn.title = restore; }, 1200); };
+  var fail = function () { btn.title = 'Не удалось скопировать'; setTimeout(function () { btn.title = restore; }, 1500); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(ok, fail);
+  } else {
+    fail();
+  }
+}
 
 // ---------- MD5 / CRC32 (чистый JS, без зависимостей) ----------
 
@@ -3566,6 +3582,13 @@ function buildCardBtn(r) {
   return btn;
 }
 
+function buildCardCellContent(r) {
+  var wrap = document.createElement('div');
+  wrap.className = 'reg-card-wrap';
+  wrap.appendChild(buildCardBtn(r));
+  return wrap;
+}
+
 function buildDownloadBtn(r) {
   var entry = cardFiles[r.id];
   var btn = iconButton('dl-btn', pdfSvg(), entry ? 'Скачать файл' : 'Файл не прикреплён (откройте карточку)');
@@ -3640,8 +3663,12 @@ function openCard(r) {
     '<input type="file" id="cardFileInput" accept=".pdf">' +
     '</div>' +
     '<div class="card-hash-row">' +
-    '<div class="form-group"><span class="form-label">MD5</span><input class="form-input mono" id="cardMd5" readonly></div>' +
-    '<div class="form-group"><span class="form-label">CRC32</span><input class="form-input mono" id="cardCrc32" readonly></div>' +
+    '<div class="form-group hash-md5"><span class="form-label">MD5</span><div class="hash-field-row">' +
+    '<input class="form-input mono" id="cardMd5" readonly><button type="button" class="cell-edit-btn" id="cardMd5Copy" title="Скопировать MD5">' + copySvg() + '</button>' +
+    '</div></div>' +
+    '<div class="form-group hash-crc"><span class="form-label">CRC32</span><div class="hash-field-row">' +
+    '<input class="form-input mono" id="cardCrc32" readonly><button type="button" class="cell-edit-btn" id="cardCrc32Copy" title="Скопировать CRC32">' + copySvg() + '</button>' +
+    '</div></div>' +
     '</div>' +
     '<div class="form-group"><span class="form-label">Имя файла при скачивании</span><input class="form-input mono" id="cardDlName" readonly></div>' +
     '<span class="card-upload-status" id="cardUploadStatus"></span>' +
@@ -3653,6 +3680,9 @@ function openCard(r) {
   var crcInput = document.getElementById('cardCrc32');
   var dlNameInput = document.getElementById('cardDlName');
   var statusEl = document.getElementById('cardUploadStatus');
+
+  document.getElementById('cardMd5Copy').addEventListener('click', function () { copyToClipboard(md5Input.value, this); });
+  document.getElementById('cardCrc32Copy').addEventListener('click', function () { copyToClipboard(crcInput.value, this); });
 
   if (entry) {
     md5Input.value = entry.md5;
