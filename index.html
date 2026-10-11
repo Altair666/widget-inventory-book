@@ -548,7 +548,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.88.0</footer>
+<footer class="ver-footer">v0.88.1</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -3716,11 +3716,13 @@ function openCard(r) {
       statusEl.textContent = 'Сохранение в Grist: ' + properName + '…';
 
       var tokenInfo;
+      var uploadUrl;
       grist.docApi.getAccessToken({ readOnly: false }).then(function (info) {
         tokenInfo = info;
+        uploadUrl = tokenInfo.baseUrl + '/attachments?auth=' + tokenInfo.token;
         var formData = new FormData();
         formData.append('upload', renamedFile, properName);
-        return fetch(tokenInfo.baseUrl + '/attachments?auth=' + tokenInfo.token, {
+        return fetch(uploadUrl, {
           method: 'POST',
           body: formData,
           headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -3741,7 +3743,9 @@ function openCard(r) {
         renderRegistry();
       }).catch(function (err) {
         statusEl.textContent = 'Не удалось сохранить файл в Grist';
-        showError(err);
+        var detail = (err && err.message ? err.message : String(err));
+        detail += uploadUrl ? ('\nURL загрузки: ' + uploadUrl.replace(/auth=.*/, 'auth=***')) : '\n(токен доступа не получен — ошибка на шаге getAccessToken)';
+        showError({ message: detail });
       });
     };
     reader.onerror = function () { showError(reader.error); };
