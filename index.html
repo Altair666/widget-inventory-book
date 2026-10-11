@@ -120,7 +120,13 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .reg-format{white-space:nowrap}
 .reg-name{text-align:left;white-space:normal;word-break:break-word;overflow-wrap:anywhere}
 .reg-card{white-space:nowrap}
-.reg-dl{white-space:nowrap}
+.reg-dl,.reg-dl-head{white-space:nowrap;text-align:center!important;padding-left:0!important;padding-right:0!important}
+.reg-dl-head{color:var(--red)}
+.reg-dl-head svg{display:block;margin:0 auto}
+.reg-dl-wrap{display:flex;align-items:center;justify-content:center;width:100%}
+.dl-btn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border:1px solid transparent;border-radius:4pt;background:transparent;color:var(--red);cursor:pointer;flex-shrink:0;transition:all .1s;padding:0}
+.dl-btn:hover{background:var(--red-bg);color:var(--red);border-color:var(--red-brd)}
+.dl-btn:disabled{color:var(--tx3);opacity:.6;cursor:not-allowed;background:transparent;border-color:transparent}
 .reg-reason{text-align:left;white-space:normal;word-break:break-word;overflow-wrap:anywhere}
 .reg-note-text{white-space:pre-wrap}
 .reg-note-text.clamped{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
@@ -540,7 +546,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.85.0</footer>
+<footer class="ver-footer">v0.86.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -3210,13 +3216,14 @@ function renderRegistry() {
   table.className = 'reg-table';
   table.innerHTML =
     '<colgroup>' +
-    '<col style="width:7%"><col style="width:7%"><col style="width:4%"><col style="width:10%"><col style="width:11%">' +
-    '<col style="width:4%"><col style="width:5%"><col style="width:14%"><col style="width:13%"><col style="width:5%">' +
-    '<col style="width:15%"><col style="width:5%">' +
+    '<col style="width:30px"><col style="width:7%"><col style="width:7%"><col style="width:4%"><col style="width:10%"><col style="width:11%">' +
+    '<col style="width:4%"><col style="width:5%"><col style="width:14%"><col style="width:13%">' +
+    '<col style="width:20%"><col style="width:5%">' +
     '</colgroup>' +
     '<thead><tr>' +
+    '<th class="reg-dl-head" title="Скачать файл">' + downloadSvg() + '</th>' +
     '<th>Инв. номер</th><th>Дата</th><th>№ изм.</th><th>Изделие</th><th style="text-align:left">Обозначение</th>' +
-    '<th>Листов</th><th>Формат</th><th>Наименование</th><th>Карточка док.</th><th>Скачать</th>' +
+    '<th>Листов</th><th>Формат</th><th>Наименование</th><th>Карточка док.</th>' +
     '<th>Примечание</th><th></th>' +
     '</tr></thead><tbody></tbody>';
   var tbody = table.querySelector('tbody');
@@ -3227,20 +3234,20 @@ function renderRegistry() {
       tr.appendChild(editableRow(r));
     } else {
       tr.innerHTML =
-        '<td class="reg-dn"></td><td class="reg-date"></td><td class="reg-chg"></td><td></td><td class="reg-mono" style="text-align:left"></td>' +
-        '<td class="reg-sheets"></td><td class="reg-format"></td><td class="reg-name"></td><td class="reg-card"></td><td class="reg-dl"></td>' +
+        '<td class="reg-dl"></td><td class="reg-dn"></td><td class="reg-date"></td><td class="reg-chg"></td><td></td><td class="reg-mono" style="text-align:left"></td>' +
+        '<td class="reg-sheets"></td><td class="reg-format"></td><td class="reg-name"></td><td class="reg-card"></td>' +
         '<td class="reg-reason"></td><td class="reg-actions"></td>';
       var c = tr.children;
-      c[0].textContent = r.InventoryNumber || '';
-      c[1].textContent = formatDate(r.IssueDate);
-      c[2].textContent = (r.ChangeNumber != null) ? r.ChangeNumber : '';
-      c[3].textContent = productLabelForRecord(r);
-      c[4].textContent = r.DocumentDesignation || '';
-      c[5].textContent = r.Sheets || '';
-      c[6].textContent = r.Format || '';
-      c[7].textContent = r.Name || '';
-      c[8].appendChild(buildCardBtn(r));
-      c[9].appendChild(buildDownloadBtn(r));
+      c[0].appendChild(buildDownloadCellContent(r));
+      c[1].textContent = r.InventoryNumber || '';
+      c[2].textContent = formatDate(r.IssueDate);
+      c[3].textContent = (r.ChangeNumber != null) ? r.ChangeNumber : '';
+      c[4].textContent = productLabelForRecord(r);
+      c[5].textContent = r.DocumentDesignation || '';
+      c[6].textContent = r.Sheets || '';
+      c[7].textContent = r.Format || '';
+      c[8].textContent = r.Name || '';
+      c[9].appendChild(buildCardBtn(r));
       c[10].appendChild(buildNoteCell(r));
       var actions = c[11];
       var actionsWrap = document.createElement('span');
@@ -3259,6 +3266,11 @@ function renderRegistry() {
 
 function editableRow(r) {
   var frag = document.createDocumentFragment();
+
+  var tdDl = document.createElement('td');
+  tdDl.className = 'reg-dl';
+  tdDl.appendChild(buildDownloadCellContent(r));
+  frag.appendChild(tdDl);
 
   var tdNum = document.createElement('td');
   tdNum.className = 'reg-dn'; tdNum.textContent = r.InventoryNumber || '';
@@ -3359,11 +3371,6 @@ function editableRow(r) {
   tdCard.appendChild(buildCardBtn(r));
   frag.appendChild(tdCard);
 
-  var tdDl = document.createElement('td');
-  tdDl.className = 'reg-dl';
-  tdDl.appendChild(buildDownloadBtn(r));
-  frag.appendChild(tdDl);
-
   var tdNote = document.createElement('td');
   tdNote.className = 'reg-reason';
   var taNote = document.createElement('textarea');
@@ -3416,7 +3423,8 @@ function eyeSvg() { return '<svg width="14" height="14" viewBox="0 0 24 24" fill
 function eyeOffSvg() { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a20.3 20.3 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a20.3 20.3 0 0 1-2.66 3.79M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>'; }
 function gripSvg() { return '<svg width="10" height="14" viewBox="0 0 10 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="1" x2="3" y2="13"/><line x1="7" y1="1" x2="7" y2="13"/></svg>'; }
 function cardIdSvg() { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="8" cy="12" r="2"/><path d="M14 10h6M14 14h4"/></svg>'; }
-function downloadSvg() { return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M4 21h16"/></svg>'; }
+function downloadSvg() { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M4 21h16"/></svg>'; }
+function pdfSvg() { return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 11h3M9 14h6M9 17h6"/></svg>'; }
 
 // ---------- MD5 / CRC32 (чистый JS, без зависимостей) ----------
 
@@ -3560,13 +3568,20 @@ function buildCardBtn(r) {
 
 function buildDownloadBtn(r) {
   var entry = cardFiles[r.id];
-  var btn = iconButton('cell-edit-btn', downloadSvg(), entry ? 'Скачать файл' : 'Файл не прикреплён (откройте карточку)');
+  var btn = iconButton('dl-btn', pdfSvg(), entry ? 'Скачать файл' : 'Файл не прикреплён (откройте карточку)');
   if (!entry) {
     btn.disabled = true;
   } else {
     btn.addEventListener('click', function () { downloadCardFile(r); });
   }
   return btn;
+}
+
+function buildDownloadCellContent(r) {
+  var wrap = document.createElement('div');
+  wrap.className = 'reg-dl-wrap';
+  wrap.appendChild(buildDownloadBtn(r));
+  return wrap;
 }
 
 function fileExt(name) {
