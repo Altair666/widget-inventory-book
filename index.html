@@ -548,7 +548,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.87.0</footer>
+<footer class="ver-footer">v0.88.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -3672,7 +3672,7 @@ function openCard(r) {
     '</div>' +
     '<div class="form-group"><span class="form-label">Имя файла при скачивании</span><input class="form-input mono" id="cardDlName" readonly></div>' +
     '<span class="card-upload-status" id="cardUploadStatus"></span>' +
-    '<span class="card-upload-hint">Файл прикрепляется только в этой сессии виджета (для наглядной проверки скачивания). Сохранение файла в базу данных Grist пока не реализовано.</span>' +
+    '<span class="card-upload-hint">При выборе файла он сохраняется в Grist как вложение с именем по формату «обозначение_измXX», а MD5 записывается в столбец «Сигнатура (MD5)».</span>' +
     '</div>';
 
   var fileInput = document.getElementById('cardFileInput');
@@ -3689,6 +3689,10 @@ function openCard(r) {
     crcInput.value = entry.crc32;
     dlNameInput.value = cardFileName(r, entry.ext);
     statusEl.textContent = 'Прикреплён: ' + entry.file.name;
+  } else if (r.Signature) {
+    md5Input.value = r.Signature;
+    dlNameInput.value = r.FileName || '';
+    statusEl.textContent = 'Файл уже сохранён в Grist' + (r.FileName ? ' (' + r.FileName + ')' : '');
   }
 
   fileInput.addEventListener('change', function () {
@@ -3704,12 +3708,41 @@ function openCard(r) {
       var md5Hex = md5(bytes);
       var crcHex = crc32(bytes);
       var ext = fileExt(file.name) || '.pdf';
-      cardFiles[r.id] = { file: file, ext: ext, md5: md5Hex, crc32: crcHex };
+      var properName = cardFileName(r, ext);
+      var renamedFile = new File([bytes], properName, { type: file.type || 'application/pdf' });
       md5Input.value = md5Hex;
       crcInput.value = crcHex;
-      dlNameInput.value = cardFileName(r, ext);
-      statusEl.textContent = 'Прикреплён: ' + file.name + ' (в БД пока не сохраняется)';
-      renderRegistry();
+      dlNameInput.value = properName;
+      statusEl.textContent = 'Сохранение в Grist: ' + properName + '…';
+
+      var tokenInfo;
+      grist.docApi.getAccessToken({ readOnly: false }).then(function (info) {
+        tokenInfo = info;
+        var formData = new FormData();
+        formData.append('upload', renamedFile, properName);
+        return fetch(tokenInfo.baseUrl + '/attachments?auth=' + tokenInfo.token, {
+          method: 'POST',
+          body: formData,
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+      }).then(function (resp) {
+        if (!resp.ok) throw new Error('Grist вернул ошибку загрузки вложения: ' + resp.status);
+        return resp.json();
+      }).then(function (result) {
+        var attachmentId = result[0];
+        return grist.selectedTable.update({
+          id: r.id,
+          fields: { Signature: md5Hex, pdf_file_id: ['L', attachmentId] }
+        });
+      }).then(function () {
+        cardFiles[r.id] = { file: renamedFile, ext: ext, md5: md5Hex, crc32: crcHex };
+        r.Signature = md5Hex;
+        statusEl.textContent = 'Сохранён в Grist: ' + properName;
+        renderRegistry();
+      }).catch(function (err) {
+        statusEl.textContent = 'Не удалось сохранить файл в Grist';
+        showError(err);
+      });
     };
     reader.onerror = function () { showError(reader.error); };
     reader.readAsArrayBuffer(file);
