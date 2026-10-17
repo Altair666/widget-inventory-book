@@ -548,7 +548,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.88.1</footer>
+<footer class="ver-footer">v0.89.0</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -2439,6 +2439,40 @@ function nameFieldsForItem(item, resolvedDocTypeId) {
   return Object.assign({}, empty, fields);
 }
 
+// Добавляет/убирает сопутствующий лист ЛУ/УД к карточке формируемого
+// списка — тот же эффект, что кнопки tm-lu-btn в ячейке дерева (см.
+// generateDocList), но доступный для ЛЮБОЙ карточки независимо от того, как
+// она попала в список: перенесена из дерева («»»), добавлена одной строкой
+// при выборе ESPD_components/Estd_components напрямую (standalone-режим,
+// см. selectProduct()) или найдена поиском существующего документа. Именно
+// в standalone-режиме у кнопок tm-lu-btn в дереве нет альтернативы — дерево
+// там вообще не показывается (.standalone .tree-col{display:none}).
+// Повторный клик снимает уже добавленный спутник — toggle определяется по
+// наличию в списке карточки с designation = designation носителя + код.
+function toggleGenItemCompanion(idx, compType) {
+  var item = state.generatedList[idx];
+  if (!item || !compType || item.hostLabel) return;
+  var dsg = item.designation + '-' + compType.code;
+  var existingIdx = state.generatedList.findIndex(function (g) { return g.designation === dsg; });
+  if (existingIdx !== -1) {
+    state.generatedList.splice(existingIdx, 1);
+  } else {
+    var companion = Object.assign({
+      compId: item.compId,
+      code: compType.code,
+      label: compType.label,
+      hostLabel: item.label,
+      designation: dsg
+    }, defaultsForNewVersion(dsg));
+    // item.compId у документа, найденного поиском по обозначению, остаётся
+    // псевдо-id (см. selectProduct()/nameFieldsForItem) — реальный узел для
+    // Ref-полей спутника лежит в stemCompId, его нужно пронести так же.
+    if (item.stemCompId != null) companion.stemCompId = item.stemCompId;
+    state.generatedList.splice(idx + 1, 0, companion);
+  }
+  renderGenList();
+}
+
 function renderGenList() {
   updateBomPanelVisibility();
   var el = document.getElementById('genList');
@@ -2447,6 +2481,8 @@ function renderGenList() {
     return;
   }
   el.innerHTML = '';
+  var genLuType = DOC_TYPES.filter(function (d) { return d.label === 'ЛУ'; })[0];
+  var genUdType = DOC_TYPES.filter(function (d) { return d.label === 'УД'; })[0];
   state.generatedList.forEach(function (item, idx) {
     var card = document.createElement('div');
     card.className = 'gen-card';
@@ -2716,6 +2752,36 @@ function renderGenList() {
     changeNumSpan.textContent = '№' + (typeof previewChangeNum === 'number' ? previewChangeNum : '—');
     changeBox.appendChild(changeLabel); changeBox.appendChild(changeNumSpan);
     controlsWrap.appendChild(changeBox);
+
+    // Сопутствующие листы — только у «носителя» (!item.hostLabel); у самого
+    // спутника (карточка ЛУ/УД) своих ЛУ/УД не бывает, см. toggleGenItemCompanion.
+    if (!item.hostLabel && genLuType && genUdType) {
+      var luUdBox = document.createElement('div');
+      luUdBox.className = 'gen-card-box gen-card-box-luud';
+      var luUdLabel = document.createElement('span');
+      luUdLabel.className = 'gen-card-box-label'; luUdLabel.textContent = 'ЛУ/УД';
+      luUdBox.appendChild(luUdLabel);
+
+      var luDsg = item.designation + '-' + genLuType.code;
+      var genLuBtn = document.createElement('button');
+      genLuBtn.type = 'button';
+      genLuBtn.className = 'tm-lu-btn' + (state.generatedList.some(function (g) { return g.designation === luDsg; }) ? ' on' : '');
+      genLuBtn.textContent = 'ЛУ';
+      genLuBtn.title = 'Добавить лист утверждения к этому документу';
+      genLuBtn.addEventListener('click', function () { toggleGenItemCompanion(idx, genLuType); });
+      luUdBox.appendChild(genLuBtn);
+
+      var udDsg = item.designation + '-' + genUdType.code;
+      var genUdBtn = document.createElement('button');
+      genUdBtn.type = 'button';
+      genUdBtn.className = 'tm-lu-btn' + (state.generatedList.some(function (g) { return g.designation === udDsg; }) ? ' on' : '');
+      genUdBtn.textContent = 'УД';
+      genUdBtn.title = 'Добавить удостоверяющий лист к этому документу';
+      genUdBtn.addEventListener('click', function () { toggleGenItemCompanion(idx, genUdType); });
+      luUdBox.appendChild(genUdBtn);
+
+      controlsWrap.appendChild(luUdBox);
+    }
 
     var removeBtn = document.createElement('button');
     removeBtn.className = 'gen-card-remove'; removeBtn.textContent = '×'; removeBtn.title = 'Убрать';
