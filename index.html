@@ -246,6 +246,9 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
 .gen-card-format-other{width:52px;display:none}
 .gen-card-format-other.on{display:block}
 .gen-card-box-change{background:var(--grn-bg);border-color:var(--grn-brd)}
+.gen-lu-btn{display:flex;align-items:center;justify-content:center;height:26px;padding:0 8px;border:1px solid var(--brd);border-radius:var(--r);background:var(--surf);color:var(--tx3);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0}
+.gen-lu-btn:hover{border-color:var(--acc)}
+.gen-lu-btn.on{background:var(--grn);border-color:var(--grn);color:#fff}
 .gen-card-changenum-value{width:34px;font-family:var(--mono);font-size:12px;font-weight:400;color:var(--tx);white-space:nowrap;text-align:right}
 .gen-card-remove{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;flex-shrink:0;border:none;border-radius:50%;background:transparent;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:0;transition:all .12s}
 .gen-card-remove:hover{background:var(--red-bg)}
@@ -548,7 +551,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);font-size:13px;col
   <div class="conn-dot" id="connDot"></div>
   <span class="conn-lbl" id="connLbl">Ожидание Grist…</span>
 </div>
-<footer class="ver-footer">v0.89.0</footer>
+<footer class="ver-footer">v0.89.1</footer>
 
 <div id="overlay"></div>
 <div id="settingsPanel">
@@ -2721,6 +2724,28 @@ function renderGenList() {
     var controlsWrap = document.createElement('div');
     controlsWrap.className = 'gen-card-controls';
 
+    // Сопутствующие листы — только у «носителя» (!item.hostLabel); у самого
+    // спутника (карточка ЛУ/УД) своих ЛУ/УД не бывает, см. toggleGenItemCompanion.
+    if (!item.hostLabel && genLuType && genUdType) {
+      var luDsg = item.designation + '-' + genLuType.code;
+      var genLuBtn = document.createElement('button');
+      genLuBtn.type = 'button';
+      genLuBtn.className = 'gen-lu-btn' + (state.generatedList.some(function (g) { return g.designation === luDsg; }) ? ' on' : '');
+      genLuBtn.textContent = 'ЛУ';
+      genLuBtn.title = 'Добавить лист утверждения к этому документу';
+      genLuBtn.addEventListener('click', function () { toggleGenItemCompanion(idx, genLuType); });
+      controlsWrap.appendChild(genLuBtn);
+
+      var udDsg = item.designation + '-' + genUdType.code;
+      var genUdBtn = document.createElement('button');
+      genUdBtn.type = 'button';
+      genUdBtn.className = 'gen-lu-btn' + (state.generatedList.some(function (g) { return g.designation === udDsg; }) ? ' on' : '');
+      genUdBtn.textContent = 'УД';
+      genUdBtn.title = 'Добавить удостоверяющий лист к этому документу';
+      genUdBtn.addEventListener('click', function () { toggleGenItemCompanion(idx, genUdType); });
+      controlsWrap.appendChild(genUdBtn);
+    }
+
     controlsWrap.appendChild(formatBox);
 
     var sheetsBox = document.createElement('div');
@@ -2752,36 +2777,6 @@ function renderGenList() {
     changeNumSpan.textContent = '№' + (typeof previewChangeNum === 'number' ? previewChangeNum : '—');
     changeBox.appendChild(changeLabel); changeBox.appendChild(changeNumSpan);
     controlsWrap.appendChild(changeBox);
-
-    // Сопутствующие листы — только у «носителя» (!item.hostLabel); у самого
-    // спутника (карточка ЛУ/УД) своих ЛУ/УД не бывает, см. toggleGenItemCompanion.
-    if (!item.hostLabel && genLuType && genUdType) {
-      var luUdBox = document.createElement('div');
-      luUdBox.className = 'gen-card-box gen-card-box-luud';
-      var luUdLabel = document.createElement('span');
-      luUdLabel.className = 'gen-card-box-label'; luUdLabel.textContent = 'ЛУ/УД';
-      luUdBox.appendChild(luUdLabel);
-
-      var luDsg = item.designation + '-' + genLuType.code;
-      var genLuBtn = document.createElement('button');
-      genLuBtn.type = 'button';
-      genLuBtn.className = 'tm-lu-btn' + (state.generatedList.some(function (g) { return g.designation === luDsg; }) ? ' on' : '');
-      genLuBtn.textContent = 'ЛУ';
-      genLuBtn.title = 'Добавить лист утверждения к этому документу';
-      genLuBtn.addEventListener('click', function () { toggleGenItemCompanion(idx, genLuType); });
-      luUdBox.appendChild(genLuBtn);
-
-      var udDsg = item.designation + '-' + genUdType.code;
-      var genUdBtn = document.createElement('button');
-      genUdBtn.type = 'button';
-      genUdBtn.className = 'tm-lu-btn' + (state.generatedList.some(function (g) { return g.designation === udDsg; }) ? ' on' : '');
-      genUdBtn.textContent = 'УД';
-      genUdBtn.title = 'Добавить удостоверяющий лист к этому документу';
-      genUdBtn.addEventListener('click', function () { toggleGenItemCompanion(idx, genUdType); });
-      luUdBox.appendChild(genUdBtn);
-
-      controlsWrap.appendChild(luUdBox);
-    }
 
     var removeBtn = document.createElement('button');
     removeBtn.className = 'gen-card-remove'; removeBtn.textContent = '×'; removeBtn.title = 'Убрать';
